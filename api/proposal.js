@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     const clientDisplay = empresa || nome;
     const servicos = ms('Serviços');
     const prazo    = sel('Prazo') || '—';
-    const estimativa = num2('Estimativa') || 0;
+    const estimativa = num2('Valor Final') || num2('Estimativa') || 0;
     const antecipado = Math.round(estimativa * 0.90 / 50) * 50;
     const fmt = n => n.toLocaleString('pt-BR');
     const today = new Date().toLocaleDateString('pt-BR');

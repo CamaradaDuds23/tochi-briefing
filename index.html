@@ -1099,7 +1099,10 @@ function collectData() {
       material
     } : null,
     motion: S.services.has('motion') ? {
-      tipo: S.mtype, duracao: S.mduracao, assets
+      tipos: Array.from(document.querySelectorAll('[data-g="mtype-ck"].sel')).map(i=>i.dataset.v),
+      complexidade: Array.from(document.querySelectorAll('[data-g="mcomplexidade"].sel')).map(i=>i.dataset.v),
+      duracao: S.mduracao,
+      assets
     } : null,
     prazo: S.prazo,
     referencias: refs,
@@ -1148,20 +1151,27 @@ function calcEstimate(data) {
     }
   }
 
-  // MOTION
-  if (data.motion) {
-    const { tipo, duracao } = data.motion;
-
-    let base = 0;
-    if (tipo === 'logo')    base = 800;
-    if (tipo === 'vinheta') base = 1000;
-    if (tipo === 'video') {
-      if (duracao === '2min')      base = 1200;
-      else if (duracao === '5min') base = 2000;
-      else                          base = 3500;
-    }
-    if (!base) base = 800;
-    total += base;
+  // MOTION — calcula por tipo selecionado
+  if (data.motion && data.motion.tipos?.length) {
+    const { tipos, duracao, complexidade } = data.motion;
+    let motBase = 0;
+    tipos.forEach(tipo => {
+      if (tipo === 'logo')      motBase += 800;
+      if (tipo === 'vinheta')   motBase += 1000;
+      if (tipo === 'elementos') motBase += 600;
+      if (tipo === 'video') {
+        if (duracao === '2min')      motBase += 1200;
+        else if (duracao === '5min') motBase += 2000;
+        else                          motBase += 3500;
+      }
+    });
+    // Complexidade multiplier
+    const has3d = complexidade?.includes('3d');
+    const hasCriacao = complexidade?.includes('criacao');
+    if (has3d)      motBase = Math.round(motBase * 1.75);
+    else if (hasCriacao) motBase = Math.round(motBase * 1.30);
+    if (!motBase) motBase = 800;
+    total += motBase * (data.motionQty || 1);
   }
 
   // IA SERVICES
@@ -1280,8 +1290,8 @@ async function sendToNotion(data, est) {
   }
 
   if (data.motion) {
-    const tipos = Array.from(document.querySelectorAll('[data-g="mtype-ck"].sel')).map(el=>moTipoMap[el.dataset.v]);
-    const compl = Array.from(document.querySelectorAll('[data-g="mcomplexidade"].sel')).map(el=>moComplMap[el.dataset.v]);
+    const tipos = (data.motion.tipos||[]).map(v=>moTipoMap[v]);
+    const compl = (data.motion.complexidade||[]).map(v=>moComplMap[v]);
     body.properties['Tipos Motion']     = ms(tipos);
     if (S.mduracao) body.properties['Duração Motion'] = { select: { name: durMoMap[S.mduracao] } };
     body.properties['Complexidade Mo']  = ms(compl);

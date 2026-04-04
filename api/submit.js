@@ -158,7 +158,7 @@ export default async function handler(req, res) {
     </table>
     ${briefLink ? `<p style="margin-top:16px"><a href="${briefLink}" style="color:#e01010">Ver briefing completo →</a></p>` : ''}
     ${pageUrl ? `<p style="margin-top:8px"><a href="${pageUrl}" style="color:#888;font-size:12px">Abrir no Notion →</a></p>` : ''}
-    ${propId ? `<p style="margin-top:6px"><a href="https://tochi-briefing.vercel.app/api/briefing?id=${propId}" style="color:#888;font-size:12px">Ver página do briefing →</a></p>` : ""}
+    ${propId ? `<p style="margin-top:6px"><a href="https://tochi-briefing.vercel.app/api/briefing?id=${propId}" style="color:#888;font-size:12px">Ver página do briefing →</a></p><p style="margin-top:4px"><a href="https://tochi-briefing.vercel.app/api/status?id=${propId}" style="color:#888;font-size:12px">Ver status do projeto →</a></p>` : ""}
   </div>
   <div style="padding:16px 28px;border-top:1px solid #2a2a2a;font-size:11px;color:#555;letter-spacing:1px;text-transform:uppercase">
     tochi.com.br · sistema automático de briefings

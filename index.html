@@ -617,8 +617,6 @@ footer.cf{
         <div class="ck-item" data-g="ia-svc" data-v="narracao" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Geração de narração</span></div>
         <div class="ck-item" data-g="ia-svc" data-v="personagem" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Criação de personagem</span></div>
         <div class="ck-item" data-g="ia-svc" data-v="animacao" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Animação de personagem</span></div>
-        <div class="ck-item" data-g="ia-svc" data-v="elementos-2d" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Elementos 2D</span></div>
-        <div class="ck-item" data-g="ia-svc" data-v="elementos-3d" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Elementos 3D</span></div>
         <div class="ck-item" data-g="ia-svc" data-v="storyboard" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Geração de Storyboard</span></div>
       </div>
     </div>
@@ -1234,7 +1232,7 @@ async function sendToNotion(data, est) {
   const moTipoMap  = {'logo':'Logo Animado','vinheta':'Vinheta/Intro','video':'Vídeo Full Motion','elementos':'Elementos Gráficos'};
   const moComplMap = {'template':'Template adaptado','criacao':'Criação do zero','3d':'3D/VFX','compositing':'Compositing'};
   const assetsMap  = {'kv':'KV/Identidade visual','roteiro':'Roteiro/Script','locucao':'Locução gravada','trilha':'Trilha definida'};
-  const iaSvcMap   = {'video-zero':'Geração de vídeo do zero','video-img':'Vídeo com imagem base','narracao':'Geração de narração','personagem':'Criação de personagem','animacao':'Animação de personagem','elementos-2d':'Elementos 2D','elementos-3d':'Elementos 3D','storyboard':'Geração de Storyboard'};
+  const iaSvcMap   = {'video-zero':'Geração de vídeo do zero','video-img':'Vídeo com imagem base','narracao':'Geração de narração','personagem':'Criação de personagem','animacao':'Animação de personagem','storyboard':'Geração de Storyboard'};
   const svcNames   = {edicao:'Edição de Vídeo',motion:'Motion Design',ia:'Produção com IA'};
 
   const txt = v => ({ rich_text: [{ text: { content: v||'' } }] });
@@ -1346,7 +1344,7 @@ function generateProposal() {
   const durHMap    = {'1min':'Até 1 min','3min':'Até 3 min','5min':'Até 5 min','5min+':'5 min+'};
   const durVMap    = {'30s':'Até 30s','1min':'Até 1 min','1min30':'Até 1min30','3min':'Até 3 min'};
   const moTipoMap  = {logo:'Logo Animado',vinheta:'Vinheta / Intro',video:'Vídeo Full Motion',elementos:'Elementos Gráficos'};
-  const iaSvcMap   = {'video-zero':'Geração de vídeo do zero','video-img':'Vídeo com imagem base',narracao:'Geração de narração',personagem:'Criação de personagem',animacao:'Animação de personagem','elementos-2d':'Elementos 2D','elementos-3d':'Elementos 3D',storyboard:'Geração de Storyboard'};
+  const iaSvcMap   = {'video-zero':'Geração de vídeo do zero','video-img':'Vídeo com imagem base',narracao:'Geração de narração',personagem:'Criação de personagem',animacao:'Animação de personagem',storyboard:'Geração de Storyboard'};
   const prazoMap   = {'2dias':'2 dias úteis','padrao':'10–15 dias úteis','sempressa':'A combinar'};
 
   // Hero title from services

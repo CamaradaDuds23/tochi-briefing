@@ -67,6 +67,13 @@ export default async function handler(req, res) {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tochi — Status ${propId}</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='315 320 450 437' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='800' height='800' fill='%230d0d0d'/%3E%3Cpolygon fill='%23f5f5f0' points='363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03 363.46 380.03'/%3E%3Cpath fill='red' d='M668.26,320.29v42.5h96.53v-42.5h-96.53Z'/%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Status do projeto ${propId} · ${clientDisplay}">
+<meta property="og:description" content="Acompanhe o andamento do seu projeto de pós-produção com a Tochi.">
+<meta property="og:image" content="https://tochi-briefing.vercel.app/api/og">
+<meta property="og:site_name" content="Tochi">
+<meta name="theme-color" content="${accentColor}">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}

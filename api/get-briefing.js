@@ -3,7 +3,7 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
 
   const TOKEN = process.env.NOTION_TOKEN;
-  const DB_ID = '42abf6e264884d67b45dc90ce425355c';
+  const DB_ID = 'f1a687c01a0d4924933bc010dfd0895c';
 
   const raw = req.query.id || '';
   const num = parseInt(raw.replace(/PROP-?/i, ''));

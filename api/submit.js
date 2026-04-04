@@ -125,7 +125,7 @@ export default async function handler(req, res) {
   <div style="background:#e01010;padding:20px 28px">
     <p style="margin:0;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.7)">Tochi · Novo briefing</p>
     <h1 style="margin:6px 0 0;font-size:26px;font-weight:900;letter-spacing:-0.5px">${propId || 'Sem número'} · ${nome}${empresa ? ' · '+empresa : ''}</h1>
-    ${propId ? `<div style="margin-top:16px"><a href="https://tochi-briefing.vercel.app?staff=tochi&prop=${propId}" style="display:inline-block;background:#fff;color:#e01010;font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:10px 20px">▶ GERAR ORÇAMENTO</a></div>` : ''}
+    ${propId ? `<div style="margin-top:16px"><a href="https://tochi-briefing.vercel.app/api/proposal?id=${propId}" style="display:inline-block;background:#fff;color:#e01010;font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:10px 20px">▶ GERAR ORÇAMENTO</a></div>` : ''}
   </div>
   <div style="padding:24px 28px">
     <table style="width:100%;border-collapse:collapse;font-size:13px">

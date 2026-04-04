@@ -1214,8 +1214,8 @@ function showConfirmation(data, est) {
   };
   const fmtMap = { horizontal: 'Horizontal', vertical: 'Vertical', ambos: 'Horizontal + Vertical' };
 
-  document.getElementById('c-sub').textContent = `${data.nome} · orçamento formal em até 24h${_propId ? ' · '+_propId : ''}`;
-  document.getElementById('c-nome').textContent = data.nome;
+  document.getElementById('c-sub').textContent = `${data.empresa || data.nome} · orçamento formal em até 24h${_propId ? ' · '+_propId : ''}`;
+  document.getElementById('c-nome').textContent = data.empresa || data.nome;
   document.getElementById('c-empresa').textContent = data.empresa || '—';
   document.getElementById('c-svc').textContent = data.services.map(s=>svcMap[s]).join(' + ') || '—';
   document.getElementById('c-prazo').textContent = prazoMap[data.prazo] || '—';

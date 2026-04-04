@@ -1,3 +1,75 @@
+function buildPageContent(p) {
+  const txt = k => p[k]?.rich_text?.[0]?.text?.content || '';
+  const sel = k => p[k]?.select?.name || '—';
+  const ms  = k => (p[k]?.multi_select || []).map(o => o.name).join(', ') || '—';
+  const num = k => p[k]?.number ?? '—';
+  const h2  = t => ({ object:'block', type:'heading_2', heading_2:{ rich_text:[{type:'text',text:{content:t}}] }});
+  const div = ()=> ({ object:'block', type:'divider', divider:{} });
+  const row = (label, value) => ({
+    object:'block', type:'paragraph',
+    paragraph:{ rich_text:[
+      {type:'text', text:{content:label+':  '}, annotations:{bold:true, color:'gray'}},
+      {type:'text', text:{content:String(value||'—')}}
+    ]}
+  });
+
+  const blocks = [
+    h2('👤 Identificação'),
+    row('WhatsApp',   p['WhatsApp']?.phone_number || '—'),
+    row('E-mail',     p['Email']?.email || '—'),
+    row('Empresa',    txt('Empresa')),
+    div(),
+    h2('🎯 Projeto'),
+    row('Serviços',   ms('Serviços')),
+    row('Prazo',      sel('Prazo')),
+    row('Descrição',  txt('Descrição')),
+  ];
+
+  if (p['Brief Link']?.url) blocks.push(row('Link Briefing', p['Brief Link'].url));
+
+  if (ms('Serviços Ed') !== '—') {
+    blocks.push(div(), h2('✂️ Edição de Vídeo'));
+    blocks.push(row('Formato',      sel('Formato')));
+    blocks.push(row('Qty H',        num('Qty H')));
+    blocks.push(row('Qty V',        num('Qty V')));
+    blocks.push(row('Duração H',    sel('Duração H')));
+    blocks.push(row('Duração V',    sel('Duração V')));
+    blocks.push(row('Serviços',     ms('Serviços Ed')));
+    blocks.push(row('Material',     ms('Material Ed')));
+    if (txt('Obs Edição')) blocks.push(row('Observações', txt('Obs Edição')));
+  }
+
+  if (ms('Tipos Motion') !== '—') {
+    blocks.push(div(), h2('🎨 Motion Design'));
+    blocks.push(row('Tipos',        ms('Tipos Motion')));
+    blocks.push(row('Duração',      sel('Duração Motion')));
+    blocks.push(row('Complexidade', ms('Complexidade Mo')));
+    blocks.push(row('Quantidade',   num('Qty Motion')));
+    blocks.push(row('Assets',       ms('Assets Mo')));
+    if (txt('Obs Motion')) blocks.push(row('Observações', txt('Obs Motion')));
+  }
+
+  if (ms('Serviços IA') !== '—') {
+    blocks.push(div(), h2('🤖 Produção com IA'));
+    blocks.push(row('Serviços',     ms('Serviços IA')));
+    if (num('Qty Min Vídeo') !== '—') blocks.push(row('Min. Vídeo', num('Qty Min Vídeo') + ' min'));
+    if (num('Qty Min Áudio') !== '—') blocks.push(row('Min. Áudio', num('Qty Min Áudio') + ' min'));
+    if (txt('Obs IA')) blocks.push(row('Observações', txt('Obs IA')));
+  }
+
+  const refs = txt('Referências');
+  const obs  = txt('Observações');
+  if (refs || obs) {
+    blocks.push(div(), h2('📎 Extras'));
+    if (refs) blocks.push(row('Referências', refs));
+    if (obs)  blocks.push(row('Obs. gerais', obs));
+  }
+
+  blocks.push(div(), h2('💰 Estimativa'), row('Valor', 'R$ ' + (p['Estimativa']?.number ?? '—')));
+
+  return blocks;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -20,7 +92,7 @@ export default async function handler(req, res) {
         'Content-Type':   'application/json',
         'Notion-Version': '2022-06-28'
       },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify({ ...req.body, children: buildPageContent(req.body.properties || {}) })
     });
 
     const notionData = await notionRes.json();
@@ -53,6 +125,7 @@ export default async function handler(req, res) {
   <div style="background:#e01010;padding:20px 28px">
     <p style="margin:0;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.7)">Tochi · Novo briefing</p>
     <h1 style="margin:6px 0 0;font-size:26px;font-weight:900;letter-spacing:-0.5px">${propId || 'Sem número'} · ${nome}${empresa ? ' · '+empresa : ''}</h1>
+    ${propId ? `<div style="margin-top:16px"><a href="https://tochi-briefing.vercel.app?staff=tochi&prop=${propId}" style="display:inline-block;background:#fff;color:#e01010;font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:10px 20px">▶ GERAR ORÇAMENTO</a></div>` : ''}
   </div>
   <div style="padding:24px 28px">
     <table style="width:100%;border-collapse:collapse;font-size:13px">

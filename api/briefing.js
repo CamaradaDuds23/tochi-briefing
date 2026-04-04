@@ -184,8 +184,8 @@ footer{padding:3rem 0 0;display:flex;justify-content:space-between;align-items:f
 
   <div class="hero">
     <div class="label">Briefing recebido</div>
-    <h1 class="hero-title">${nome.split(' ')[0]}<br><em>${nome.split(' ').slice(1).join(' ') || '&nbsp;'}</em></h1>
-    <div class="client-tag">Cliente &nbsp;<strong>${nome}${empresa ? ' · ' + empresa : ''}</strong></div>
+    <h1 class="hero-title">${clientDisplay.split(' ')[0]}<br><em>${clientDisplay.split(' ').slice(1).join(' ') || '&nbsp;'}</em></h1>
+    <div class="client-tag">Cliente &nbsp;<strong>${clientDisplay}${clientDisplay !== nome ? ' · ' + nome : ''}</strong></div>
     <div class="id-grid">
       <div class="id-cell"><div class="id-label">WhatsApp</div><div class="id-value">${wa}</div></div>
       <div class="id-cell"><div class="id-label">E-mail</div><div class="id-value">${email}</div></div>

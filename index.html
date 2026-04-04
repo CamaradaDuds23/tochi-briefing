@@ -648,6 +648,7 @@ footer.cf{
       </div>
     </div>
 
+    <div class="tog-err" id="e-ia-svc" style="margin-bottom:1rem">Selecione pelo menos um serviço de IA</div>
     <div class="field-wrap" style="max-width:640px">
       <label class="field-label">Contexto adicional <span class="opt">· opcional</span></label>
       <textarea class="field-textarea" id="f-ia-obs" style="min-height:72px" placeholder="Ex: personagem com estilo específico, narração em inglês, vídeo para redes sociais..."></textarea>
@@ -669,11 +670,24 @@ footer.cf{
     </div>
   </div>
 
-  <!-- STEP 8: REFS + OBS -->
+  <!-- STEP 8: REFS + OBS + ORIGEM -->
   <div class="slide" data-step="8">
     <div class="slide-label">Referências</div>
     <h2 class="slide-title">Mais algum<br>detalhe?</h2>
-    <p class="slide-sub">Links de referência e observações gerais. Tudo opcional.</p>
+    <p class="slide-sub">Tudo opcional.</p>
+
+    <div class="toggle-group" style="max-width:640px">
+      <span class="tg-label">Como você nos encontrou? <span class="opt">· opcional</span></span>
+      <div class="toggle-row" style="flex-wrap:wrap">
+        <div class="tog" data-g="origem" data-v="Indicação" onclick="setTog('origem','Indicação')" style="flex:1 1 calc(33% - 1px)">Indicação</div>
+        <div class="tog" data-g="origem" data-v="WhatsApp" onclick="setTog('origem','WhatsApp')" style="flex:1 1 calc(33% - 1px)">WhatsApp</div>
+        <div class="tog" data-g="origem" data-v="Site" onclick="setTog('origem','Site')" style="flex:1 1 calc(33% - 1px)">Site</div>
+        <div class="tog" data-g="origem" data-v="Redes sociais" onclick="setTog('origem','Redes sociais')" style="flex:1 1 calc(33% - 1px)">Redes sociais</div>
+        <div class="tog" data-g="origem" data-v="Direto" onclick="setTog('origem','Direto')" style="flex:1 1 calc(33% - 1px)">Contato direto</div>
+        <div class="tog" data-g="origem" data-v="Outro" onclick="setTog('origem','Outro')" style="flex:1 1 calc(33% - 1px)">Outro</div>
+      </div>
+    </div>
+
     <div class="field-wrap">
       <label class="field-label">Links de referência <span class="opt">· opcional</span></label>
       <div class="ref-list" id="refList">
@@ -810,7 +824,8 @@ const S = {
   services: new Set(),
   formato: null, duracao: null, vduracao: null,
   mduracao: null,
-  prazo: null
+  prazo: null,
+  origem: null
 };
 
 // ── STEPS DEFINITION ──────────────────────────────────
@@ -977,6 +992,10 @@ function validateStep(step) {
     if (hasVideo) reqState(S.mduracao, 'e-mduracao');
   }
 
+  if (step === 6 && S.services.has('ia')) {
+    reqChecked('ia-svc', 'e-ia-svc');
+  }
+
   if (step === 7) {
     reqState(S.prazo, 'e-prazo');
   }
@@ -1117,7 +1136,8 @@ function collectData() {
     iaMinAudio: parseInt(document.getElementById('ia-audio-val')?.value)||1,
     iaFrames: parseInt(document.getElementById('ia-frames-val')?.value)||10,
     iaObs: document.getElementById('f-ia-obs') ? document.getElementById('f-ia-obs').value.trim() : '',
-    obs: document.getElementById('f-obs').value.trim()
+    obs: document.getElementById('f-obs').value.trim(),
+    origem: S.origem || null
   };
 }
 
@@ -1194,8 +1214,12 @@ function calcEstimate(data) {
   // PRAZO — acréscimo apenas para urgente 2 dias
   if (data.prazo === '2dias') total = Math.round(total * 1.40);
 
-  // Fallback
-  if (total === 0) total = 400;
+  // Fallback inteligente — só dispara se nenhum serviço calculou nada
+  // (ex: IA selecionado mas nenhum sub-serviço marcado)
+  if (total === 0) {
+    if (data.services && data.services.includes('ia')) total = 800; // base IA mínimo
+    else total = 400;
+  }
 
   const r = n => Math.round(n / 50) * 50;
   return {
@@ -1307,10 +1331,12 @@ async function sendToNotion(data, est) {
     if (data.iaMinAudio) body.properties['Qty Min Áudio'] = { number: data.iaMinAudio };
   }
 
+  // Add origem at top-level so submit.js can pick it up
+  const submitPayload = { ...body, origem: data.origem };
   const res = await fetch('/api/submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify(submitPayload)
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Submission failed'); }
   const result = await res.json();

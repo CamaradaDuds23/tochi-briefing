@@ -94,7 +94,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         ...req.body,
-        properties: { ...req.body.properties, 'Status': { select: { name: '🆕 Novo' } } },
+        properties: { ...req.body.properties, 'Status': { select: { name: '🆕 Novo' } }, ...(req.body.origem ? { 'Origem': { select: { name: req.body.origem } } } : {}) },
         children: buildPageContent(req.body.properties || {})
       })
     });

@@ -90,7 +90,7 @@ export default async function handler(req, res) {
 <meta property="og:type" content="website">
 <meta property="og:title" content="Proposta ${propId} · ${clientDisplay} — Tochi">
 <meta property="og:description" content="Proposta comercial de pós-produção. Válida até ${validDate}.">
-<meta property="og:image" content="https://tochi-briefing.vercel.app/og.png">
+<!-- og:image será adicionado quando o banner estiver pronto -->
 <meta property="og:site_name" content="Tochi">
 <meta name="theme-color" content="#e01010">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">

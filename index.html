@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tochi — Briefing de Projeto</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0d0d0d;--white:#f5f5f0;--red:#e01010;
+  --gray:#2a2a2a;--gray-mid:#444;--gray-light:#888;--green:#1a7a3c
+}
+
+/* ── BASE ── */
+body{
+  background:var(--black);color:var(--white);
+  font-family:'Barlow Condensed',sans-serif;
+  height:100vh;overflow:hidden
+}
+
+/* ── PROGRESS BAR ── */
+.prog-bar{position:fixed;top:0;left:0;right:0;height:3px;background:var(--gray);z-index:300}
+.prog-fill{height:100%;background:var(--red);transition:width .5s ease}
+
+/* ── TOP NAV ── */
+.top-nav{
+  position:fixed;top:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.5rem 2.5rem;z-index:200;pointer-events:none
+}
+.top-nav-left{pointer-events:all}
+.step-counter{
+  font-family:'DM Mono',monospace;font-size:.68rem;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light)
+}
+.step-counter span{color:var(--white)}
+
+/* ── SLIDES CONTAINER ── */
+.slides{position:fixed;inset:0;overflow:hidden}
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  padding:6rem 10vw 8rem;
+  transition:transform .5s cubic-bezier(.77,0,.18,1), opacity .4s ease;
+  transform:translateY(100vh);opacity:0;pointer-events:none
+}
+.slide.active{transform:translateY(0);opacity:1;pointer-events:all}
+.slide.exiting-up{transform:translateY(-100vh);opacity:0;pointer-events:none}
+.slide.exiting-down{transform:translateY(100vh);opacity:0;pointer-events:none}
+.slide.entering-up{transform:translateY(-100vh);opacity:0}
+.slide.entering-down{transform:translateY(100vh);opacity:0}
+
+/* ── SLIDE CONTENT ── */
+.slide-label{
+  font-family:'DM Mono',monospace;font-size:.65rem;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:var(--red);margin-bottom:.75rem;
+  display:flex;align-items:center;gap:.6rem
+}
+.slide-label::before{
+  content:'';display:inline-block;width:14px;height:2px;
+  background:var(--red);flex-shrink:0
+}
+.slide-title{
+  font-size:clamp(2.2rem,5vw,4rem);font-weight:900;
+  line-height:.95;letter-spacing:-.02em;text-transform:uppercase;
+  margin-bottom:.5rem;max-width:700px
+}
+.slide-title em{font-style:normal;color:var(--red)}
+.slide-sub{
+  font-family:'DM Mono',monospace;font-size:.72rem;
+  color:var(--gray-light);letter-spacing:.04em;line-height:1.65;
+  margin-bottom:2.5rem;max-width:560px
+}
+
+/* ── FIELD ── */
+.field-wrap{width:100%;max-width:640px;margin-bottom:1.25rem}
+.field-label{
+  font-family:'DM Mono',monospace;font-size:.62rem;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light);
+  margin-bottom:.5rem;display:block
+}
+.field-label .opt{color:#555;font-size:.58rem;margin-left:.35rem}
+.field-input{
+  background:transparent;border:none;border-bottom:2px solid var(--gray-mid);
+  color:var(--white);font-family:'Barlow Condensed',sans-serif;
+  font-size:clamp(1.5rem,3vw,2.2rem);font-weight:600;
+  padding:.4rem 0;outline:none;width:100%;
+  transition:border-color .2s;letter-spacing:-.01em
+}
+.field-input:focus{border-color:var(--red)}
+.field-input::placeholder{color:#333}
+.field-textarea{
+  background:var(--gray);border:1px solid #333;
+  color:var(--white);font-family:'DM Mono',monospace;font-size:.85rem;
+  padding:1rem 1.25rem;outline:none;width:100%;min-height:120px;
+  resize:vertical;line-height:1.65;letter-spacing:.02em;
+  transition:border-color .2s
+}
+.field-textarea:focus{border-color:var(--red)}
+.field-textarea::placeholder{color:#444}
+.field-err{
+  font-family:'DM Mono',monospace;font-size:.62rem;
+  color:var(--red);letter-spacing:.06em;margin-top:.4rem;display:none
+}
+.field-err.on{display:block}
+
+/* ── FIELDS ROW ── */
+.fields-row{display:grid;grid-template-columns:1fr 1fr;gap:2rem;width:100%;max-width:640px}
+
+/* ── SERVICE CARDS ── */
+.service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--gray);border:1px solid var(--gray);width:100%;max-width:720px}
+.service-card{
+  background:var(--black);padding:1.5rem 1.25rem;cursor:pointer;
+  user-select:none;transition:background .15s;display:flex;flex-direction:column;gap:.4rem
+}
+.service-card:hover{background:#141414}
+.service-card.sel{background:var(--red)}
+.sc-dot{width:10px;height:10px;border:1px solid var(--gray-mid);margin-bottom:.6rem;transition:all .15s;flex-shrink:0}
+.service-card.sel .sc-dot{background:rgba(255,255,255,.9);border-color:transparent}
+.sc-title{font-size:1.15rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;line-height:1}
+.sc-desc{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--gray-light);letter-spacing:.04em;line-height:1.55}
+.service-card.sel .sc-desc{color:rgba(255,255,255,.65)}
+.svc-err{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--red);letter-spacing:.06em;margin-top:.75rem;display:none}
+.svc-err.on{display:block}
+
+/* ── TOGGLE ROW ── */
+.toggle-group{width:100%;max-width:640px;margin-bottom:1.75rem}
+.tg-label{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light);margin-bottom:.65rem;display:block}
+.toggle-row{display:flex;gap:1px;background:var(--gray);border:1px solid var(--gray)}
+.tog{
+  flex:1;background:var(--black);padding:.8rem .5rem;cursor:pointer;
+  user-select:none;transition:background .15s,color .15s;
+  display:flex;align-items:center;justify-content:center;gap:.4rem;
+  font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+  color:var(--gray-light);text-align:center
+}
+.tog:hover{background:#141414;color:var(--white)}
+.tog.sel{background:#1e1e1e;color:var(--white)}
+.tog.sel::before{content:'';display:inline-block;width:5px;height:5px;background:var(--red);flex-shrink:0}
+.tog-err{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--red);letter-spacing:.06em;margin-top:.4rem;display:none}
+.tog-err.on{display:block}
+
+/* ── CHECKBOXES ── */
+.check-group{width:100%;max-width:640px;margin-bottom:1.75rem}
+.ck-label{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light);margin-bottom:.65rem;display:block}
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray);border:1px solid var(--gray)}
+.ck-item{
+  background:var(--black);padding:.9rem 1.1rem;
+  display:flex;align-items:center;gap:.65rem;
+  cursor:pointer;user-select:none;transition:background .15s
+}
+.ck-item:hover{background:#141414}
+.ck-item.sel{background:#161616}
+.ck-box{
+  width:12px;height:12px;border:1px solid var(--gray-mid);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s
+}
+.ck-item.sel .ck-box{border-color:var(--red);background:var(--red)}
+.ck-item.sel .ck-box::after{content:'';width:4px;height:4px;background:var(--white);display:block}
+.ck-name{font-size:.88rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+
+/* ── QUANTITY ── */
+.qty-wrap{display:flex;align-items:center;gap:0;margin-bottom:1.5rem}
+.qty-group{display:flex;flex-direction:column;gap:.5rem}
+.qty-label{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light)}
+.qty-row{display:flex}
+.qty-btn{
+  width:40px;height:40px;background:var(--gray);border:1px solid #333;
+  color:var(--white);font-size:1.2rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;flex-shrink:0;user-select:none;
+  font-family:'DM Mono',monospace
+}
+.qty-btn:hover{background:var(--gray-mid)}
+.qty-val{
+  width:60px;height:40px;border-top:1px solid #333;border-bottom:1px solid #333;
+  border-left:none;border-right:none;background:var(--black);
+  color:var(--white);font-family:'DM Mono',monospace;font-size:1rem;
+  font-weight:500;text-align:center;outline:none;-moz-appearance:textfield
+}
+.qty-val::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* ── REFERENCES ── */
+.ref-list{display:flex;flex-direction:column;gap:.65rem;margin-bottom:.65rem;width:100%;max-width:640px}
+.ref-row{display:flex;gap:.5rem}
+.ref-input{
+  flex:1;background:var(--gray);border:1px solid #333;
+  color:var(--white);font-family:'DM Mono',monospace;font-size:.8rem;
+  padding:.75rem 1rem;outline:none;transition:border-color .15s;letter-spacing:.02em
+}
+.ref-input:focus{border-color:var(--red)}
+.ref-input::placeholder{color:#444}
+.ref-rm{
+  width:36px;height:36px;background:none;border:1px solid #333;
+  color:var(--gray-mid);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:1.1rem;flex-shrink:0;
+  transition:border-color .15s,color .15s;align-self:center;font-family:monospace
+}
+.ref-rm:hover{border-color:var(--red);color:var(--red)}
+.add-ref{
+  display:flex;align-items:center;gap:.5rem;background:none;
+  border:1px dashed #333;color:var(--gray-mid);
+  font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:.6rem 1rem;cursor:pointer;
+  transition:border-color .15s,color .15s;max-width:640px;width:100%
+}
+.add-ref:hover{border-color:var(--gray-light);color:var(--gray-light)}
+
+/* ── NAV BUTTONS ── */
+.slide-nav{
+  position:fixed;bottom:2.5rem;right:2.5rem;
+  display:flex;align-items:center;gap:.75rem;z-index:200
+}
+.btn-back{
+  background:none;border:1px solid var(--gray);color:var(--gray-light);
+  font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:.65rem 1.25rem;cursor:pointer;
+  transition:border-color .15s,color .15s
+}
+.btn-back:hover{border-color:var(--white);color:var(--white)}
+.btn-next{
+  background:var(--red);border:none;color:var(--white);
+  font-family:'Barlow Condensed',sans-serif;font-size:.95rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;
+  padding:.75rem 2rem;cursor:pointer;
+  display:flex;align-items:center;gap:.5rem;
+  transition:opacity .15s
+}
+.btn-next:hover{opacity:.88}
+.btn-next svg{width:14px;height:14px;fill:currentColor}
+.btn-next:disabled{opacity:.35;cursor:not-allowed}
+.key-hint{
+  position:fixed;bottom:2.5rem;left:2.5rem;
+  font-family:'DM Mono',monospace;font-size:.6rem;
+  letter-spacing:.1em;text-transform:uppercase;color:#333;z-index:200
+}
+
+/* ── CONFIRMATION ── */
+#confirmPage{
+  display:none;position:fixed;inset:0;
+  overflow-y:auto;background:var(--black);z-index:400
+}
+#confirmPage.on{display:block}
+.confirm-banner{
+  background:var(--green);padding:3rem 10vw;
+  display:flex;align-items:center;gap:2rem;
+  position:relative;overflow:hidden
+}
+.confirm-banner::before{
+  content:'✓';position:absolute;right:2rem;top:50%;
+  transform:translateY(-50%);font-size:10rem;font-weight:900;
+  color:rgba(255,255,255,.06);line-height:1;font-family:'Barlow Condensed',sans-serif
+}
+.cb-icon{
+  width:52px;height:52px;border:2px solid rgba(255,255,255,.4);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0
+}
+.cb-icon svg{width:26px;height:26px;fill:#fff}
+.cb-title{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:900;text-transform:uppercase;color:#fff;line-height:1;margin-bottom:.35rem}
+.cb-sub{font-family:'DM Mono',monospace;font-size:.7rem;color:rgba(255,255,255,.7);letter-spacing:.05em}
+.confirm-body{max-width:900px;margin:0 auto;padding:0 2rem 6rem}
+.cs{padding:3rem 0;border-bottom:1px solid var(--gray)}
+.cs-title{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light);margin-bottom:1.5rem}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray);border:1px solid var(--gray);margin-bottom:1.5rem}
+.cg-item{background:var(--black);padding:1.25rem 1.5rem}
+.cg-item.full{grid-column:1/-1}
+.cg-lbl{font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-light);margin-bottom:.35rem}
+.cg-val{font-size:1.1rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.cg-val.mono{font-family:'DM Mono',monospace;font-size:.85rem;font-weight:400;text-transform:none;letter-spacing:.03em;color:var(--gray-light)}
+.est-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray);border:1px solid var(--gray)}
+.est-cell{background:var(--black);padding:2rem 2.5rem;display:flex;flex-direction:column;gap:.4rem}
+.est-cell.feat{background:#1a1a1a}
+.est-lbl{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light)}
+.est-val{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:900;letter-spacing:-.02em;line-height:1}
+.est-note{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--gray-light);letter-spacing:.04em;line-height:1.6;margin-top:.2rem}
+.est-disc{
+  font-family:'DM Mono',monospace;font-size:.63rem;color:var(--gray-light);
+  letter-spacing:.05em;line-height:1.7;
+  padding:1.25rem 1.5rem;background:#111;border:1px solid var(--gray);margin-top:1px
+}
+.est-disc strong{color:var(--white);font-weight:500}
+footer.cf{
+  padding:4rem 2rem 0;max-width:900px;margin:0 auto;
+  display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:2rem
+}
+.footer-site{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gray-light);letter-spacing:.08em}
+.footer-site span{color:var(--red)}
+.footer-contact{text-align:right;font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gray-light);line-height:2;letter-spacing:.04em}
+.footer-contact strong{color:var(--white);font-weight:500}
+.accent-bar{height:4px;background:var(--green);width:100%;margin-top:3rem}
+
+/* ── PHONE WRAP ── */
+.phone-wrap{display:flex;align-items:flex-end;gap:0;width:100%}
+.phone-code{
+  background:transparent;border:none;border-bottom:2px solid var(--gray-mid);
+  color:var(--gray-light);font-family:'DM Mono',monospace;
+  font-size:clamp(.9rem,2vw,1.3rem);font-weight:500;
+  padding:.4rem .6rem .4rem 0;outline:none;cursor:pointer;
+  transition:border-color .2s;flex-shrink:0;
+  appearance:none;-webkit-appearance:none;letter-spacing:.03em;
+  min-width:80px
+}
+.phone-code:focus{border-color:var(--red);color:var(--white)}
+.phone-wrap .field-input{border-bottom:2px solid var(--gray-mid)}
+.phone-wrap .field-input:focus{border-color:var(--red)}
+.phone-sep{
+  border-bottom:2px solid var(--gray-mid);padding-bottom:.4rem;
+  color:#333;font-family:'DM Mono',monospace;font-size:1rem;
+  transition:border-color .2s;flex-shrink:0
+}
+
+/* ── LOGO SVG ── */
+.logo-sm{display:block;width:36px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  .slide{padding:6rem 6vw 7rem}
+  .fields-row{grid-template-columns:1fr;gap:1.25rem}
+  .service-grid{grid-template-columns:1fr}
+  .check-grid,.cg,.est-grid{grid-template-columns:1fr}
+  .cg-item.full{grid-column:1}
+  .slide-nav{right:1.25rem;bottom:1.5rem}
+  .key-hint{display:none}
+  .toggle-row{flex-wrap:wrap}
+  .tog{flex:1 1 calc(50% - 1px)}
+}
+
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.prop-panel{background:#0a0a0a;border-top:2px solid var(--red);padding:2rem 10vw;display:none}
+.prop-panel.on{display:block}
+.prop-panel-label{font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--red);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.prop-panel-label::before{content:'';display:inline-block;width:12px;height:2px;background:var(--red)}
+.prop-panel-row{display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
+.prop-panel-desc{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--gray-light);letter-spacing:.03em;line-height:1.65;flex:1;min-width:200px}
+.prop-gen-btn{display:inline-flex;align-items:center;gap:.6rem;padding:.9rem 2rem;background:var(--red);color:var(--white);border:none;font-family:'Barlow Condensed',sans-serif;font-size:.95rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;flex-shrink:0;transition:opacity .15s}
+.prop-gen-btn:hover{opacity:.85}
+.prop-gen-btn svg{width:14px;height:14px;fill:currentColor}
+</style>
+</head>
+<body>
+
+<div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+
+<!-- TOP NAV -->
+<div class="top-nav">
+  <svg class="logo-sm top-nav-left" viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg">
+    <polygon fill="#f5f5f0" points="363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03 363.46 380.03"/>
+    <path fill="#f5f5f0" d="M480.75,330.63c-6.71-6.9-17.33-10.34-31.88-10.34s-25.09,3.44-31.6,10.34c-6.51,6.89-9.76,18-9.76,33.31v351.54c0,15.32,3.35,26.53,10.05,33.61,6.7,7.09,17.32,10.62,31.88,10.62s25.08-3.63,31.59-10.91c6.51-7.27,9.77-18.38,9.77-33.32v-351.54c0-15.31-3.36-26.42-10.05-33.31ZM458.06,728.12h-17.81v-376.24h17.81v376.24Z"/>
+    <path fill="#f5f5f0" d="M597.06,528.23v-164.29c0-15.31-3.35-26.42-10.05-33.31-6.7-6.9-17.33-10.34-31.88-10.34s-25.08,3.44-31.59,10.34c-6.52,6.89-9.77,18-9.77,33.31v345.8c0,17.62,3.25,30.35,9.77,38.2,6.51,7.85,17.23,11.77,32.17,11.77s25.07-3.92,31.59-11.77c6.51-7.85,9.76-20.58,9.76-38.2v-111.44h-32.74v129.82h-17.8v-376.24h17.8v176.35h32.74Z"/>
+    <path fill="#f5f5f0" d="M652.78,377.75v-57.46h-32.74v436.55h32.74v-346.87h17.81v346.87h32.74v-379.13l-50.55.04Z"/>
+    <path fill="#f5f5f0" d="M732.04,377.73v379.11h32.75v-379.11h-32.75Z"/>
+    <path fill="red" d="M668.26,320.29v42.5h96.53v-42.5h-96.53Z"/>
+  </svg>
+  <div class="step-counter" id="stepCounter"></div>
+</div>
+
+<!-- SLIDES -->
+<div class="slides" id="slidesWrap">
+
+  <!-- STEP 0: WELCOME -->
+  <div class="slide active" data-step="0">
+    <div class="slide-label">Novo projeto</div>
+    <h1 class="slide-title">Briefing <em>Tochi</em></h1>
+    <p class="slide-sub">Responda com calma — leva menos de 3 minutos.<br>Você recebe uma estimativa no final e um orçamento formal em até 24h.</p>
+  </div>
+
+  <!-- STEP 1: IDENTIFICAÇÃO -->
+  <div class="slide" data-step="1">
+    <div class="slide-label">Identificação</div>
+    <h2 class="slide-title">Quem é<br>você?</h2>
+    <div class="fields-row" style="margin-top:.5rem">
+      <div class="field-wrap" style="margin-bottom:0">
+        <label class="field-label">Nome completo <span class="opt">· obrigatório</span></label>
+        <input type="text" class="field-input" id="f-nome" placeholder="Seu nome" autocomplete="name">
+        <div class="field-err" id="e-nome">Campo obrigatório</div>
+      </div>
+      <div class="field-wrap" style="margin-bottom:0">
+        <label class="field-label">Empresa <span class="opt">· opcional</span></label>
+        <input type="text" class="field-input" id="f-empresa" placeholder="Nome da marca">
+      </div>
+    </div>
+    <div class="fields-row" style="margin-top:1.5rem">
+      <div class="field-wrap" style="margin-bottom:0">
+        <label class="field-label">WhatsApp <span class="opt">· obrigatório</span></label>
+        <div style="display:flex;gap:0;align-items:flex-end">
+          <select id="f-ddi" onchange="updatePhonePlaceholder()" style="background:transparent;border:none;border-bottom:2px solid var(--gray-mid);color:var(--gray-light);font-family:'DM Mono',monospace;font-size:clamp(1rem,2vw,1.4rem);padding:.4rem .4rem .4rem 0;outline:none;cursor:pointer;flex-shrink:0;-webkit-appearance:none;appearance:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--gray-mid)'">
+            <option value="+55">🇧🇷 +55</option>
+            <option value="+1">🇺🇸 +1</option>
+            <option value="+44">🇬🇧 +44</option>
+            <option value="+351">🇵🇹 +351</option>
+            <option value="+49">🇩🇪 +49</option>
+            <option value="+33">🇫🇷 +33</option>
+            <option value="+34">🇪🇸 +34</option>
+            <option value="+54">🇦🇷 +54</option>
+            <option value="+56">🇨🇱 +56</option>
+            <option value="+57">🇨🇴 +57</option>
+            <option value="+598">🇺🇾 +598</option>
+          </select>
+          <input type="tel" class="field-input" id="f-whatsapp" placeholder="(11) 9 0000-0000" autocomplete="tel" style="flex:1" oninput="fmtPhone(this)">
+        </div>
+        <div class="field-err" id="e-whatsapp">Número incompleto</div>
+      </div>
+      <div class="field-wrap" style="margin-bottom:0">
+        <label class="field-label">E-mail <span class="opt">· obrigatório</span></label>
+        <input type="email" class="field-input" id="f-email" placeholder="seu@email.com" autocomplete="email">
+        <div class="field-err" id="e-email">E-mail inválido</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: DESCRIÇÃO -->
+  <div class="slide" data-step="2">
+    <div class="slide-label">Contexto</div>
+    <h2 class="slide-title">O que você<br>precisa?</h2>
+    <div class="field-wrap" style="max-width:640px">
+      <textarea class="field-textarea" id="f-descricao" placeholder="Ex: Preciso de um aftermovie do meu casamento, temos o material bruto gravado pela equipe do evento..."></textarea>
+      <div class="field-err" id="e-descricao">Conta um pouco sobre o projeto</div>
+    </div>
+    <div class="field-wrap" style="max-width:640px;margin-top:1rem">
+      <label class="field-label">Link do briefing <span class="opt">· opcional — Google Docs, Notion, Drive...</span></label>
+      <input type="url" class="field-input" id="f-briefing-link" placeholder="https://" style="font-size:clamp(1rem,2vw,1.5rem)">
+    </div>
+  </div>
+
+  <!-- STEP 3: SERVIÇOS -->
+  <div class="slide" data-step="3">
+    <div class="slide-label">Serviços</div>
+    <h2 class="slide-title">Qual serviço<br>você precisa?</h2>
+    <p class="slide-sub">Pode selecionar mais de um.</p>
+    <div class="service-grid">
+      <div class="service-card" data-svc="edicao" onclick="toggleSvc('edicao')">
+        <div class="sc-dot"></div>
+        <div class="sc-title">Edição de Vídeo</div>
+        <div class="sc-desc">Corte, color grade, SFX e montagem a partir do material bruto</div>
+      </div>
+      <div class="service-card" data-svc="motion" onclick="toggleSvc('motion')">
+        <div class="sc-dot"></div>
+        <div class="sc-title">Motion Design</div>
+        <div class="sc-desc">Logo animado, vinheta, vídeo full motion ou elementos gráficos</div>
+      </div>
+      <div class="service-card" data-svc="ia" onclick="toggleSvc('ia')">
+        <div class="sc-dot"></div>
+        <div class="sc-title">Produção com IA</div>
+        <div class="sc-desc">Geração de vídeo, narração, personagem, animação e elementos 2D/3D</div>
+      </div>
+    </div>
+    <div class="svc-err" id="e-svc">Selecione pelo menos um serviço</div>
+  </div>
+
+  <!-- STEP 4: EDIÇÃO -->
+  <div class="slide" data-step="4" data-conditional="edicao">
+    <div class="slide-label">Edição de Vídeo</div>
+    <h2 class="slide-title">Detalhes<br>da edição</h2>
+
+    <div class="toggle-group">
+      <span class="tg-label">Formato <span style="color:var(--red);font-size:.58rem">· obrigatório</span></span>
+      <div class="toggle-row">
+        <div class="tog" data-g="formato" data-v="horizontal" onclick="setTog('formato','horizontal')">Horizontal</div>
+        <div class="tog" data-g="formato" data-v="vertical" onclick="setTog('formato','vertical')">Vertical</div>
+        <div class="tog" data-g="formato" data-v="ambos" onclick="setTog('formato','ambos')">Ambos</div>
+      </div>
+      <div class="tog-err" id="e-formato">Selecione o formato</div>
+    </div>
+
+    <div id="qty-simples" class="qty-group" style="margin-bottom:1.75rem">
+      <span class="qty-label">Quantidade de vídeos</span>
+      <div class="qty-row">
+        <button type="button" class="qty-btn" onclick="adjQty('eq',-1)">−</button>
+        <input type="number" class="qty-val" id="eq-val" value="1" min="1" max="99">
+        <button type="button" class="qty-btn" onclick="adjQty('eq',1)">+</button>
+      </div>
+    </div>
+    <div id="qty-split" style="display:none;margin-bottom:1.75rem;flex-direction:column;gap:1rem">
+      <div class="qty-group">
+        <span class="qty-label">Vídeos Horizontais</span>
+        <div class="qty-row">
+          <button type="button" class="qty-btn" onclick="adjQty('eqh',-1)">−</button>
+          <input type="number" class="qty-val" id="eqh-val" value="1" min="0" max="99">
+          <button type="button" class="qty-btn" onclick="adjQty('eqh',1)">+</button>
+        </div>
+      </div>
+      <div class="qty-group">
+        <span class="qty-label">Vídeos Verticais</span>
+        <div class="qty-row">
+          <button type="button" class="qty-btn" onclick="adjQty('eqv',-1)">−</button>
+          <input type="number" class="qty-val" id="eqv-val" value="1" min="0" max="99">
+          <button type="button" class="qty-btn" onclick="adjQty('eqv',1)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="dur-group" class="toggle-group">
+      <span class="tg-label">Duração — horizontal <span style="color:var(--red);font-size:.58rem">· obrigatório</span></span>
+      <div class="toggle-row">
+        <div class="tog" data-g="duracao" data-v="1min" onclick="setTog('duracao','1min')">Até 1 min</div>
+        <div class="tog" data-g="duracao" data-v="3min" onclick="setTog('duracao','3min')">Até 3 min</div>
+        <div class="tog" data-g="duracao" data-v="5min" onclick="setTog('duracao','5min')">Até 5 min</div>
+        <div class="tog" data-g="duracao" data-v="5min+" onclick="setTog('duracao','5min+')">5 min+</div>
+      </div>
+      <div class="tog-err" id="e-duracao">Selecione a duração</div>
+    </div>
+
+    <div id="vdur-group" class="toggle-group" style="display:none">
+      <span class="tg-label">Duração — vertical <span style="color:var(--red);font-size:.58rem">· obrigatório</span></span>
+      <div class="toggle-row">
+        <div class="tog" data-g="vduracao" data-v="30s" onclick="setTog('vduracao','30s')">Até 30s</div>
+        <div class="tog" data-g="vduracao" data-v="1min" onclick="setTog('vduracao','1min')">Até 1 min</div>
+        <div class="tog" data-g="vduracao" data-v="1min30" onclick="setTog('vduracao','1min30')">Até 1min30</div>
+        <div class="tog" data-g="vduracao" data-v="3min" onclick="setTog('vduracao','3min')">Até 3 min</div>
+      </div>
+      <div class="tog-err" id="e-vduracao">Selecione a duração</div>
+    </div>
+
+    <div class="check-group">
+      <span class="ck-label">Serviços <span style="color:var(--red);font-size:.58rem">· obrigatório · pode marcar mais de um</span></span>
+      <div class="check-grid">
+        <div class="ck-item" data-g="complexidade" data-v="corte" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Corte</span></div>
+        <div class="ck-item" data-g="complexidade" data-v="color" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Color Grade</span></div>
+        <div class="ck-item" data-g="complexidade" data-v="sfx" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">SFX</span></div>
+        <div class="ck-item" data-g="complexidade" data-v="motion" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Motion / Tipografia</span></div>
+        <div class="ck-item" data-g="complexidade" data-v="legendas" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Legendas</span></div>
+        <div class="ck-item" data-g="complexidade" data-v="multicam" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Multi Câmera</span></div>
+      </div>
+      <div class="tog-err" id="e-ecomplexidade">Selecione pelo menos um serviço</div>
+    </div>
+
+    <div class="check-group">
+      <span class="ck-label">Material disponível <span class="opt" style="color:#555;font-size:.6rem">· marque o que você já tem</span></span>
+      <div class="check-grid">
+        <div class="ck-item" data-g="material" data-v="footage" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Footage bruta gravada</span></div>
+        <div class="ck-item" data-g="material" data-v="roteiro" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Roteiro pronto</span></div>
+        <div class="ck-item" data-g="material" data-v="trilha" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Trilha definida</span></div>
+        <div class="ck-item" data-g="material" data-v="locucao" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Locução gravada</span></div>
+      </div>
+    </div>
+
+    <div class="field-wrap" style="max-width:640px;margin-bottom:1.5rem">
+      <label class="field-label">Observações <span class="opt">· opcional</span></label>
+      <textarea class="field-textarea" id="f-complexidade-obs" style="min-height:72px" placeholder="Ex: transições elaboradas, efeitos específicos, estilo de cor referenciado..."></textarea>
+    </div>
+  </div>
+
+  <!-- STEP 5: MOTION -->
+  <div class="slide" data-step="5" data-conditional="motion">
+    <div class="slide-label">Motion Design</div>
+    <h2 class="slide-title">Detalhes<br>do motion</h2>
+
+    <div class="check-group">
+      <span class="ck-label">Tipo de entregável <span style="color:var(--red);font-size:.58rem">· obrigatório · pode marcar mais de um</span></span>
+      <div class="check-grid">
+        <div class="ck-item" data-g="mtype-ck" data-v="logo" onclick="toggleMotionTipo(this)"><div class="ck-box"></div><span class="ck-name">Logo Animado</span></div>
+        <div class="ck-item" data-g="mtype-ck" data-v="vinheta" onclick="toggleMotionTipo(this)"><div class="ck-box"></div><span class="ck-name">Vinheta / Intro</span></div>
+        <div class="ck-item" data-g="mtype-ck" data-v="video" onclick="toggleMotionTipo(this)"><div class="ck-box"></div><span class="ck-name">Vídeo Full Motion</span></div>
+        <div class="ck-item" data-g="mtype-ck" data-v="elementos" onclick="toggleMotionTipo(this)"><div class="ck-box"></div><span class="ck-name">Elementos Gráficos</span></div>
+      </div>
+      <div class="tog-err" id="e-mtype">Selecione pelo menos um tipo</div>
+    </div>
+
+    <div id="mdur-group" class="toggle-group" style="display:none">
+      <span class="tg-label">Duração do vídeo <span style="color:var(--red);font-size:.58rem">· obrigatório</span></span>
+      <div class="toggle-row">
+        <div class="tog" data-g="mduracao" data-v="2min" onclick="setTog('mduracao','2min')">Até 2 min</div>
+        <div class="tog" data-g="mduracao" data-v="5min" onclick="setTog('mduracao','5min')">Até 5 min</div>
+        <div class="tog" data-g="mduracao" data-v="10min+" onclick="setTog('mduracao','10min+')">10 min+</div>
+      </div>
+      <div class="tog-err" id="e-mduracao">Selecione a duração</div>
+    </div>
+
+    <div class="check-group">
+      <span class="ck-label">Complexidade <span class="opt" style="color:#555;font-size:.6rem">· marque o que se aplica</span></span>
+      <div class="check-grid">
+        <div class="ck-item" data-g="mcomplexidade" data-v="template" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Template adaptado</span></div>
+        <div class="ck-item" data-g="mcomplexidade" data-v="criacao" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Criação do zero</span></div>
+        <div class="ck-item" data-g="mcomplexidade" data-v="3d" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">3D / VFX</span></div>
+        <div class="ck-item" data-g="mcomplexidade" data-v="compositing" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Compositing</span></div>
+      </div>
+    </div>
+
+    <div class="qty-group" style="margin-bottom:1.75rem">
+      <span class="qty-label">Quantidade de entregáveis</span>
+      <div class="qty-row">
+        <button type="button" class="qty-btn" onclick="adjQty('mq',-1)">−</button>
+        <input type="number" class="qty-val" id="mq-val" value="1" min="1" max="99">
+        <button type="button" class="qty-btn" onclick="adjQty('mq',1)">+</button>
+      </div>
+    </div>
+
+    <div class="check-group">
+      <span class="ck-label">Assets disponíveis <span class="opt" style="color:#555;font-size:.6rem">· marque o que você já tem</span></span>
+      <div class="check-grid">
+        <div class="ck-item" data-g="assets" data-v="kv" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Identidade visual / KV</span></div>
+        <div class="ck-item" data-g="assets" data-v="roteiro" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Roteiro / Script</span></div>
+        <div class="ck-item" data-g="assets" data-v="locucao" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Locução gravada</span></div>
+        <div class="ck-item" data-g="assets" data-v="trilha" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Trilha definida</span></div>
+      </div>
+    </div>
+
+    <div class="field-wrap" style="max-width:640px;margin-bottom:1.5rem">
+      <label class="field-label">Observações <span class="opt">· opcional</span></label>
+      <textarea class="field-textarea" id="f-motion-obs" style="min-height:72px" placeholder="Ex: estilo visual de referência, animação específica, integração com footage..."></textarea>
+    </div>
+  </div>
+
+  <!-- STEP 6: IA -->
+  <div class="slide" data-step="6" data-conditional="ia">
+    <div class="slide-label">Produção com IA</div>
+    <h2 class="slide-title">O que você<br>precisa de IA?</h2>
+    <p class="slide-sub">Pode selecionar mais de um processo.</p>
+
+    <div class="check-group" style="max-width:720px">
+      <div class="check-grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="ck-item" data-g="ia-svc" data-v="video-zero" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Geração de vídeo do zero</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="video-img" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Vídeo com imagem base</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="narracao" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Geração de narração</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="personagem" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Criação de personagem</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="animacao" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Animação de personagem</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="elementos-2d" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Elementos 2D</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="elementos-3d" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Elementos 3D</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="storyboard" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Geração de Storyboard</span></div>
+      </div>
+    </div>
+
+    <div class="field-wrap" style="max-width:640px">
+      <label class="field-label">Contexto adicional <span class="opt">· opcional</span></label>
+      <textarea class="field-textarea" id="f-ia-obs" style="min-height:72px" placeholder="Ex: personagem com estilo específico, narração em inglês, vídeo para redes sociais..."></textarea>
+    </div>
+  </div>
+
+  <!-- STEP 7: PRAZO -->
+  <div class="slide" data-step="7">
+    <div class="slide-label">Cronograma</div>
+    <h2 class="slide-title">Qual é o<br>seu prazo?</h2>
+    <p class="slide-sub">Apenas projetos com prazo abaixo de 2 dias úteis têm acréscimo.</p>
+    <div class="toggle-group" style="max-width:540px">
+      <div class="toggle-row" style="flex-direction:column;gap:1px">
+        <div class="tog" style="justify-content:flex-start;padding:1rem 1.25rem" data-g="prazo" data-v="2dias" onclick="setTog('prazo','2dias')">Urgente · até 2 dias úteis <span style="font-family:DM Mono,monospace;font-size:.6rem;color:rgba(255,255,255,.4);margin-left:.5rem">+40%</span></div>
+        <div class="tog" style="justify-content:flex-start;padding:1rem 1.25rem" data-g="prazo" data-v="padrao" onclick="setTog('prazo','padrao')">Padrão · a partir de 10 dias úteis</div>
+        <div class="tog" style="justify-content:flex-start;padding:1rem 1.25rem" data-g="prazo" data-v="sempressa" onclick="setTog('prazo','sempressa')">Sem urgência</div>
+      </div>
+      <div class="tog-err" id="e-prazo">Selecione o prazo</div>
+    </div>
+  </div>
+
+  <!-- STEP 8: REFS + OBS -->
+  <div class="slide" data-step="8">
+    <div class="slide-label">Referências</div>
+    <h2 class="slide-title">Mais algum<br>detalhe?</h2>
+    <p class="slide-sub">Links de referência e observações gerais. Tudo opcional.</p>
+    <div class="field-wrap">
+      <label class="field-label">Links de referência <span class="opt">· opcional</span></label>
+      <div class="ref-list" id="refList">
+        <div class="ref-row"><input type="url" class="ref-input" placeholder="https://"></div>
+      </div>
+      <button type="button" class="add-ref" onclick="addRef()">+ Adicionar link</button>
+    </div>
+    <div class="field-wrap" style="margin-top:1.5rem">
+      <label class="field-label">Observações <span class="opt">· opcional</span></label>
+      <textarea class="field-textarea" id="f-obs" placeholder="Qualquer detalhe relevante que não foi coberto nas perguntas anteriores..."></textarea>
+    </div>
+  </div>
+
+</div><!-- /slides -->
+
+<!-- NAV BUTTONS -->
+<div class="slide-nav">
+  <button class="btn-back" id="btnBack" onclick="goBack()" style="display:none">← Voltar</button>
+  <button class="btn-next" id="btnNext" onclick="goNext()">
+    Próximo
+    <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+  </button>
+</div>
+<div class="key-hint">Enter ↵ para avançar</div>
+
+<!-- CONFIRMATION PAGE -->
+<div id="confirmPage">
+  <div class="confirm-banner">
+    <div class="cb-icon">
+      <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+    </div>
+    <div>
+      <div class="cb-title">Briefing recebido!</div>
+      <div class="cb-sub" id="c-sub">Orçamento formal em até 24h.</div>
+    </div>
+  </div>
+  <div class="confirm-body">
+    <div class="cs">
+      <div class="cs-title">Resumo do projeto</div>
+      <div class="cg">
+        <div class="cg-item"><div class="cg-lbl">Cliente</div><div class="cg-val" id="c-nome">—</div></div>
+        <div class="cg-item"><div class="cg-lbl">Empresa</div><div class="cg-val" id="c-empresa">—</div></div>
+        <div class="cg-item full"><div class="cg-lbl">Serviços</div><div class="cg-val" id="c-svc">—</div></div>
+        <div class="cg-item"><div class="cg-lbl">Prazo</div><div class="cg-val" id="c-prazo">—</div></div>
+        <div class="cg-item" id="c-fmt-wrap"><div class="cg-lbl">Formato</div><div class="cg-val" id="c-fmt">—</div></div>
+        <div class="cg-item full"><div class="cg-lbl">Descrição</div><div class="cg-val mono" id="c-desc">—</div></div>
+      </div>
+    </div>
+    <div class="cs">
+      <div class="cs-title">Estimativa de investimento</div>
+      <div class="est-grid" style="grid-template-columns:1fr">
+        <div class="est-cell">
+          <div class="est-lbl">Estimativa base</div>
+          <div class="est-val" id="c-range">—</div>
+          <div class="est-note">Valor estimado · sujeito a revisão no orçamento formal</div>
+        </div>
+      </div>
+      <div class="est-disc">Esta é uma <strong>estimativa automática</strong> gerada a partir das informações do briefing. O orçamento formal será enviado em até <strong>24h</strong> e pode variar conforme análise do material.</div>
+    </div>
+    <div class="cs">
+      <div class="cs-title">Próximos passos</div>
+      <div class="cg">
+        <div class="cg-item"><div class="cg-lbl">01 · Orçamento</div><div class="cg-val" style="font-size:.95rem;margin-bottom:.3rem">Orçamento formal</div><div class="cg-val mono">Você receberá um orçamento completo por e-mail em até 24h</div></div>
+        <div class="cg-item"><div class="cg-lbl">02 · Aprovação</div><div class="cg-val" style="font-size:.95rem;margin-bottom:.3rem">Confirmação</div><div class="cg-val mono">Confirme via WhatsApp ou e-mail para darmos início</div></div>
+        <div class="cg-item full"><div class="cg-lbl">03 · Produção</div><div class="cg-val" style="font-size:.95rem;margin-bottom:.3rem">Início do projeto</div><div class="cg-val mono">Prazo começa após recebimento do material e confirmação da 1ª parcela</div></div>
+      </div>
+    </div>
+  </div>
+  <!-- INTERNAL: Proposal Generator Panel -->
+  <div class="prop-panel" id="propPanel">
+    <div class="prop-panel-label">Uso interno · Tochi</div>
+    <div class="prop-panel-row">
+      <div class="prop-panel-desc">Briefing salvo no Notion. Clique para gerar o rascunho do orçamento completo — revise, ajuste o valor e baixe o HTML antes de enviar ao cliente.</div>
+      <button class="prop-gen-btn" onclick="generateProposal()">
+        <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        Gerar Orçamento
+      </button>
+    </div>
+  </div>
+
+  <footer class="cf">
+    <div>
+      <div class="footer-site"><a href="https://tochi.com.br" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span>tochi</span>.com.br</a></div>
+    </div>
+    <div class="footer-contact"><strong>Eduardo Bertochi</strong><br>eduardo@tochi.com.br</div>
+  </footer>
+  <div class="accent-bar"></div>
+</div>
+
+<script>
+// ── PHONE FORMATTER ──────────────────────────────────
+const PHONE_PLACEHOLDERS = {
+  '+55':  '(11) 9 0000-0000',
+  '+1':   '(555) 000-0000',
+  '+44':  '07700 000000',
+  '+351': '912 000 000',
+  '+49':  '0151 00000000',
+  '+33':  '06 00 00 00 00',
+  '+34':  '600 000 000',
+  '+54':  '11 0000-0000',
+  '+56':  '9 0000 0000',
+  '+57':  '300 000 0000',
+  '+598': '099 000 000',
+};
+function updatePhonePlaceholder() {
+  const ddi = document.getElementById('f-ddi').value;
+  document.getElementById('f-whatsapp').placeholder = PHONE_PLACEHOLDERS[ddi] || 'Número';
+  document.getElementById('f-whatsapp').value = '';
+}
+function fmtPhone(input) {
+  const ddi = document.getElementById('f-ddi').value;
+  let v = input.value.replace(/\D/g, '');
+  if (ddi === '+55') {
+    // Brazilian: (11) 9 0000-0000
+    if (v.length > 11) v = v.slice(0, 11);
+    if (v.length > 7)      v = '(' + v.slice(0,2) + ') ' + v.slice(2,3) + ' ' + v.slice(3,7) + '-' + v.slice(7);
+    else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+    else if (v.length > 0) v = '(' + v;
+  } else if (ddi === '+1') {
+    // NANP: (555) 000-0000
+    if (v.length > 10) v = v.slice(0, 10);
+    if (v.length > 6)      v = '(' + v.slice(0,3) + ') ' + v.slice(3,6) + '-' + v.slice(6);
+    else if (v.length > 3) v = '(' + v.slice(0,3) + ') ' + v.slice(3);
+    else if (v.length > 0) v = '(' + v;
+  } else {
+    // International: keep digits only, max 15 (ITU-T E.164)
+    if (v.length > 15) v = v.slice(0, 15);
+  }
+  input.value = v;
+}
+
+// ── STATE ──────────────────────────────────────────────
+const S = {
+  services: new Set(),
+  formato: null, duracao: null, vduracao: null,
+  mduracao: null,
+  prazo: null
+};
+
+// ── STEPS DEFINITION ──────────────────────────────────
+// step ids match data-step attr; conditional steps skipped if service not selected
+const ALL_STEPS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+// step 4 = edicao, step 5 = motion, step 6 = ia (all conditional)
+
+function getActiveSteps() {
+  return ALL_STEPS.filter(s => {
+    if (s === 4) return S.services.has('edicao');
+    if (s === 5) return S.services.has('motion');
+    if (s === 6) return S.services.has('ia');
+    return true;
+  });
+}
+
+let curStepIndex = 0; // index into getActiveSteps()
+
+function curStep() { return getActiveSteps()[curStepIndex]; }
+function totalSteps() { return getActiveSteps().length; }
+
+// ── NAVIGATION ────────────────────────────────────────
+function goNext() {
+  if (!validateStep(curStep())) return;
+
+  const steps = getActiveSteps();
+  if (curStepIndex >= steps.length - 1) {
+    submit();
+    return;
+  }
+
+  const fromStep = curStep();
+  curStepIndex++;
+  const toStep = curStep();
+
+  transition(fromStep, toStep, 'forward');
+  updateNav();
+}
+
+function goBack() {
+  if (curStepIndex === 0) return;
+  const fromStep = curStep();
+  curStepIndex--;
+  const toStep = curStep();
+  transition(fromStep, toStep, 'backward');
+  updateNav();
+}
+
+function transition(from, to, dir) {
+  const fromEl = document.querySelector(`[data-step="${from}"]`);
+  const toEl   = document.querySelector(`[data-step="${to}"]`);
+
+  fromEl.classList.remove('active');
+  fromEl.classList.add(dir === 'forward' ? 'exiting-up' : 'exiting-down');
+  toEl.classList.add(dir === 'forward' ? 'entering-up' : 'entering-down');
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      toEl.classList.remove('entering-up', 'entering-down');
+      toEl.classList.add('active');
+      setTimeout(() => fromEl.classList.remove('exiting-up', 'exiting-down'), 500);
+    });
+  });
+
+  // focus first input in new step
+  setTimeout(() => {
+    const inp = toEl.querySelector('input, textarea');
+    if (inp && window.innerWidth > 640) inp.focus();
+  }, 300);
+}
+
+function updateNav() {
+  const steps = getActiveSteps();
+  const isLast = curStepIndex === steps.length - 1;
+  const isFirst = curStepIndex === 0;
+
+  document.getElementById('btnBack').style.display = isFirst ? 'none' : '';
+  const btn = document.getElementById('btnNext');
+  if (isLast) {
+    btn.innerHTML = `<svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg> Enviar Briefing`;
+  } else if (curStep() === 0) {
+    btn.innerHTML = `Começar <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>`;
+  } else {
+    btn.innerHTML = `Próximo <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>`;
+  }
+
+  // progress
+  const pct = steps.length <= 1 ? 0 : (curStepIndex / (steps.length - 1)) * 100;
+  document.getElementById('progFill').style.width = pct + '%';
+
+  // counter (hide on step 0)
+  const counter = document.getElementById('stepCounter');
+  if (curStep() === 0) {
+    counter.textContent = '';
+  } else {
+    counter.innerHTML = `<span>${curStepIndex}</span> / ${steps.length - 1}`;
+  }
+}
+
+// ── VALIDATION ────────────────────────────────────────
+function validateStep(step) {
+  let ok = true;
+
+  function req(id, errId) {
+    const el = document.getElementById(id);
+    const empty = !el || !el.value.trim();
+    if (errId) document.getElementById(errId).classList.toggle('on', empty);
+    if (empty) ok = false;
+  }
+
+  function reqState(val, errId) {
+    const missing = !val;
+    if (errId) document.getElementById(errId).classList.toggle('on', missing);
+    if (missing) ok = false;
+  }
+
+  function reqChecked(group, errId) {
+    const none = document.querySelectorAll(`[data-g="${group}"].sel`).length === 0;
+    if (errId) document.getElementById(errId).classList.toggle('on', none);
+    if (none) ok = false;
+  }
+
+  if (step === 1) {
+    // Nome
+    req('f-nome', 'e-nome');
+    // WhatsApp
+    const ddi = document.getElementById('f-ddi').value;
+    const wa  = document.getElementById('f-whatsapp');
+    const digits = (wa.value||'').replace(/\D/g,'');
+    const minDigits = (ddi === '+55' || ddi === '+1') ? 10 : 7;
+    const waOk = digits.length >= minDigits;
+    wa.style.borderColor = waOk ? '' : 'var(--red)';
+    document.getElementById('e-whatsapp').classList.toggle('on', !waOk);
+    if (!waOk) ok = false;
+    // Email
+    const email = document.getElementById('f-email');
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value||'');
+    email.style.borderColor = emailOk ? '' : 'var(--red)';
+    document.getElementById('e-email').classList.toggle('on', !emailOk);
+    if (!emailOk) ok = false;
+  }
+
+  if (step === 2) {
+    req('f-descricao', 'e-descricao');
+  }
+
+  if (step === 3) {
+    const noSvc = S.services.size === 0;
+    document.getElementById('e-svc').classList.toggle('on', noSvc);
+    if (noSvc) ok = false;
+  }
+
+  if (step === 4) {
+    reqState(S.formato, 'e-formato');
+    const isV = S.formato === 'vertical', isB = S.formato === 'ambos';
+    if (!isV) reqState(S.duracao, 'e-duracao');
+    if (isV || isB) reqState(S.vduracao, 'e-vduracao');
+    reqChecked('complexidade', 'e-ecomplexidade');
+  }
+
+  if (step === 5) {
+    reqChecked('mtype-ck', 'e-mtype');
+    const hasVideo = !!document.querySelector('[data-g="mtype-ck"][data-v="video"].sel');
+    if (hasVideo) reqState(S.mduracao, 'e-mduracao');
+  }
+
+  if (step === 7) {
+    reqState(S.prazo, 'e-prazo');
+  }
+
+  return ok;
+}
+
+// ── SERVICES ──────────────────────────────────────────
+function toggleSvc(svc) {
+  document.getElementById('e-svc').classList.remove('on');
+  S.services.has(svc) ? S.services.delete(svc) : S.services.add(svc);
+  ['edicao','motion','ia'].forEach(s => {
+    const el = document.querySelector(`[data-svc="${s}"]`);
+    if (el) el.classList.toggle('sel', S.services.has(s));
+  });
+}
+
+// ── TOGGLES ───────────────────────────────────────────
+function setTog(group, val) {
+  S[group] = val;
+  document.querySelectorAll(`[data-g="${group}"]`).forEach(el =>
+    el.classList.toggle('sel', el.dataset.v === val)
+  );
+
+  if (group === 'formato') {
+    const isV = val === 'vertical';
+    const isB = val === 'ambos';
+    const isH = val === 'horizontal';
+    document.getElementById('dur-group').style.display  = isV ? 'none' : '';
+    document.getElementById('vdur-group').style.display = (isV || isB) ? '' : 'none';
+    document.getElementById('qty-simples').style.display = isB ? 'none' : '';
+    document.getElementById('qty-split').style.display   = isB ? 'flex' : 'none';
+    if (isH) { S.vduracao = null; document.querySelectorAll('[data-g="vduracao"]').forEach(e=>e.classList.remove('sel')); }
+    if (isV) { S.duracao = null; document.querySelectorAll('[data-g="duracao"]').forEach(e=>e.classList.remove('sel')); }
+    document.getElementById('e-formato').classList.remove('on');
+  }
+
+  if (group === 'mtype') {
+    const isVid = val === 'video';
+    document.getElementById('mdur-group').style.display = isVid ? '' : 'none';
+    if (!isVid) S.mduracao = null;
+    document.getElementById('e-mtype').classList.remove('on');
+  }
+
+  if (group === 'vduracao') S.vduracao = val;
+  const err = document.getElementById(`e-${group}`);
+  if (err) err.classList.remove('on');
+}
+
+// ── CHECKBOXES ────────────────────────────────────────
+function toggleCk(el) { el.classList.toggle('sel'); }
+function toggleMotionTipo(el) {
+  el.classList.toggle('sel');
+  document.getElementById('e-mtype').classList.remove('on');
+  const hasVideo = !!document.querySelector('[data-g="mtype-ck"][data-v="video"].sel');
+  document.getElementById('mdur-group').style.display = hasVideo ? '' : 'none';
+  if (!hasVideo) { S.mduracao = null; document.querySelectorAll('[data-g="mduracao"]').forEach(e=>e.classList.remove('sel')); }
+}
+
+// ── QUANTITY ──────────────────────────────────────────
+function adjQty(id, d) {
+  const inp = document.getElementById(`${id}-val`);
+  const min = id === 'eqv' || id === 'eqh' ? 0 : 1;
+  inp.value = Math.max(min, Math.min(99, (parseInt(inp.value)||0) + d));
+}
+
+// ── REFERENCES ────────────────────────────────────────
+function addRef() {
+  const list = document.getElementById('refList');
+  const row = document.createElement('div');
+  row.className = 'ref-row';
+  row.innerHTML = `<input type="url" class="ref-input" placeholder="https://"><button type="button" class="ref-rm" onclick="this.parentElement.remove()">×</button>`;
+  list.appendChild(row);
+}
+
+// ── COLLECT DATA ──────────────────────────────────────
+function collectData() {
+  const refs = Array.from(document.querySelectorAll('#refList input'))
+    .map(i=>i.value.trim()).filter(Boolean);
+  const material = Array.from(document.querySelectorAll('[data-g="material"].sel')).map(i=>i.dataset.v);
+  const assets   = Array.from(document.querySelectorAll('[data-g="assets"].sel')).map(i=>i.dataset.v);
+  const formato  = S.formato;
+
+  let eqH = 1, eqV = 1, eqTotal = 1;
+  if (S.services.has('edicao')) {
+    if (formato === 'ambos') {
+      eqH = parseInt(document.getElementById('eqh-val').value)||0;
+      eqV = parseInt(document.getElementById('eqv-val').value)||0;
+      eqTotal = eqH + eqV;
+    } else {
+      eqTotal = parseInt(document.getElementById('eq-val').value)||1;
+      if (formato === 'horizontal') eqH = eqTotal;
+      if (formato === 'vertical')   eqV = eqTotal;
+    }
+  }
+
+  return {
+    nome:      document.getElementById('f-nome').value.trim(),
+    empresa:   document.getElementById('f-empresa').value.trim(),
+    whatsapp:  (document.getElementById('f-ddi').value + ' ' + document.getElementById('f-whatsapp').value).trim(),
+    email:     document.getElementById('f-email').value.trim(),
+    descricao: document.getElementById('f-descricao').value.trim(),
+    services:  Array.from(S.services),
+    edicao: S.services.has('edicao') ? {
+      formato, duracao: S.duracao,
+      qtyH: eqH, qtyV: eqV, qtyTotal: eqTotal,
+      material
+    } : null,
+    motion: S.services.has('motion') ? {
+      tipo: S.mtype, duracao: S.mduracao, assets
+    } : null,
+    prazo: S.prazo,
+    referencias: refs,
+    briefingLink: document.getElementById('f-briefing-link') ? document.getElementById('f-briefing-link').value.trim() : '',
+    complexidade: Array.from(document.querySelectorAll('[data-g="complexidade"].sel')).map(i=>i.dataset.v),
+    complexidadeObs: document.getElementById('f-complexidade-obs') ? document.getElementById('f-complexidade-obs').value.trim() : '',
+    vduracao: S.vduracao,
+    motionQty: parseInt(document.getElementById('mq-val') ? document.getElementById('mq-val').value : 1)||1,
+    motionObs: document.getElementById('f-motion-obs') ? document.getElementById('f-motion-obs').value.trim() : '',
+    iaSvcs: Array.from(document.querySelectorAll('[data-g="ia-svc"].sel')).map(i=>i.dataset.v),
+    iaObs: document.getElementById('f-ia-obs') ? document.getElementById('f-ia-obs').value.trim() : '',
+    obs: document.getElementById('f-obs').value.trim()
+  };
+}
+
+// ── ESTIMATE ──────────────────────────────────────────
+function calcEstimate(data) {
+  let total = 0;
+
+  // EDIÇÃO — valores conservadores para estimativa ao cliente
+  if (data.edicao) {
+    const { formato, duracao, qtyH, qtyV } = data.edicao;
+
+    // Horizontais
+    if (qtyH > 0) {
+      const long = duracao === '5min+';
+      let base = long ? 550 : 400;
+      let sub = base * qtyH;
+      if (qtyH >= 11) sub = Math.round(sub * 0.80);
+      else if (qtyH >= 6) sub = Math.round(sub * 0.85);
+      else if (qtyH >= 3) sub = Math.round(sub * 0.90);
+      total += sub;
+    }
+
+    // Verticais
+    if (qtyV > 0) {
+      let base = 220;
+      let sub = base * qtyV;
+      if (qtyV >= 11) sub = Math.round(sub * 0.80);
+      else if (qtyV >= 6) sub = Math.round(sub * 0.85);
+      else if (qtyV >= 3) sub = Math.round(sub * 0.90);
+      total += sub;
+    }
+  }
+
+  // MOTION
+  if (data.motion) {
+    const { tipo, duracao } = data.motion;
+
+    let base = 0;
+    if (tipo === 'logo')    base = 800;
+    if (tipo === 'vinheta') base = 1000;
+    if (tipo === 'video') {
+      if (duracao === '2min')      base = 1200;
+      else if (duracao === '5min') base = 2000;
+      else                          base = 3500;
+    }
+    if (!base) base = 800;
+    total += base;
+  }
+
+  // PRAZO — acréscimo apenas para urgente 2 dias
+  if (data.prazo === '2dias') total = Math.round(total * 1.40);
+
+  // Fallback
+  if (total === 0) total = 400;
+
+  const r = n => Math.round(n / 50) * 50;
+  return {
+    base: r(total),
+    min:  r(total * 0.85),
+    max:  r(total * 1.15)
+  };
+}
+
+// ── CONFIRMATION ──────────────────────────────────────
+function showConfirmation(data, est) {
+  _d = data; _e = est;
+  document.getElementById('progFill').style.width = '100%';
+  document.getElementById('confirmPage').classList.add('on');
+  document.getElementById('propPanel').classList.add('on');
+  window.scrollTo(0,0);
+
+  const fmt = n => n.toLocaleString('pt-BR');
+  const svcMap = { edicao: 'Edição de Vídeo', motion: 'Motion Design' };
+  const prazoMap = {
+    '2dias': 'Urgente · até 2 dias úteis',
+    'padrao': 'Padrão · a partir de 10 dias úteis',
+    'sempressa': 'Sem urgência'
+  };
+  const fmtMap = { horizontal: 'Horizontal', vertical: 'Vertical', ambos: 'Horizontal + Vertical' };
+
+  document.getElementById('c-sub').textContent = `${data.nome} · orçamento formal em até 24h`;
+  document.getElementById('c-nome').textContent = data.nome;
+  document.getElementById('c-empresa').textContent = data.empresa || '—';
+  document.getElementById('c-svc').textContent = data.services.map(s=>svcMap[s]).join(' + ') || '—';
+  document.getElementById('c-prazo').textContent = prazoMap[data.prazo] || '—';
+  document.getElementById('c-desc').textContent = data.descricao || '—';
+
+  if (data.edicao) {
+    document.getElementById('c-fmt').textContent = fmtMap[data.edicao.formato] || '—';
+  } else {
+    document.getElementById('c-fmt-wrap').style.display = 'none';
+  }
+
+  document.getElementById('c-range').textContent = `R$${fmt(est.min)} – R$${fmt(est.max)}`;
+}
+
+// ── INTEGRATIONS ──────────────────────────────────────
+async function sendToNotion(data, est) {
+  const DB_ID = '42abf6e264884d67b45dc90ce425355c'; // database id — not sensitive
+
+  const prazoMap   = {'2dias':'Urgente até 2 dias','padrao':'Padrão 10+ dias','sempressa':'Sem urgência'};
+  const fmtMap     = {'horizontal':'Horizontal','vertical':'Vertical','ambos':'Ambos'};
+  const durHMap    = {'1min':'Até 1 min','3min':'Até 3 min','5min':'Até 5 min','5min+':'5 min+'};
+  const durVMap    = {'30s':'Até 30s','1min':'Até 1 min','1min30':'Até 1min30','3min':'Até 3 min'};
+  const durMoMap   = {'2min':'Até 2 min','5min':'Até 5 min','10min+':'10 min+'};
+  const svcEdMap   = {'corte':'Corte','color':'Color Grade','sfx':'SFX','motion':'Motion/Tipografia','legendas':'Legendas','multicam':'Multi Câmera'};
+  const matMap     = {'footage':'Footage bruta','roteiro':'Roteiro','trilha':'Trilha','locucao':'Locução'};
+  const moTipoMap  = {'logo':'Logo Animado','vinheta':'Vinheta/Intro','video':'Vídeo Full Motion','elementos':'Elementos Gráficos'};
+  const moComplMap = {'template':'Template adaptado','criacao':'Criação do zero','3d':'3D/VFX','compositing':'Compositing'};
+  const assetsMap  = {'kv':'KV/Identidade visual','roteiro':'Roteiro/Script','locucao':'Locução gravada','trilha':'Trilha definida'};
+  const iaSvcMap   = {'video-zero':'Geração de vídeo do zero','video-img':'Vídeo com imagem base','narracao':'Geração de narração','personagem':'Criação de personagem','animacao':'Animação de personagem','elementos-2d':'Elementos 2D','elementos-3d':'Elementos 3D','storyboard':'Geração de Storyboard'};
+  const svcNames   = {edicao:'Edição de Vídeo',motion:'Motion Design',ia:'Produção com IA'};
+
+  const txt = v => ({ rich_text: [{ text: { content: v||'' } }] });
+  const ms  = arr => ({ multi_select: arr.filter(Boolean).map(n=>({name:n})) });
+
+  const body = {
+    parent: { database_id: DB_ID },
+    properties: {
+      'Nome':        { title:        [{ text: { content: data.nome } }] },
+      'Empresa':     txt(data.empresa),
+      'WhatsApp':    { phone_number: data.whatsapp },
+      'Email':       { email:        data.email },
+      'Serviços':    ms(data.services.map(s=>svcNames[s])),
+      'Descrição':   txt(data.descricao),
+      'Brief Link':  { url: data.briefingLink || null },
+      'Prazo':       { select: data.prazo ? { name: prazoMap[data.prazo] } : null },
+      'Estimativa':  { number: est.base },
+      'Referências': txt((data.referencias||[]).join('\n')),
+      'Observações': txt(data.obs),
+    }
+  };
+
+  if (data.edicao) {
+    const e = data.edicao;
+    if (e.formato)      body.properties['Formato']     = { select: { name: fmtMap[e.formato] } };
+    body.properties['Qty H']       = { number: e.qtyH || 0 };
+    body.properties['Qty V']       = { number: e.qtyV || 0 };
+    if (e.duracao)      body.properties['Duração H']   = { select: { name: durHMap[e.duracao] } };
+    if (data.vduracao)  body.properties['Duração V']   = { select: { name: durVMap[data.vduracao] } };
+    body.properties['Serviços Ed'] = ms((e.complexidade||[]).map(v=>svcEdMap[v]));
+    body.properties['Material Ed'] = ms((e.material||[]).map(v=>matMap[v]));
+    body.properties['Obs Edição']  = txt(data.complexidadeObs);
+  }
+
+  if (data.motion) {
+    const tipos = Array.from(document.querySelectorAll('[data-g="mtype-ck"].sel')).map(el=>moTipoMap[el.dataset.v]);
+    const compl = Array.from(document.querySelectorAll('[data-g="mcomplexidade"].sel')).map(el=>moComplMap[el.dataset.v]);
+    body.properties['Tipos Motion']     = ms(tipos);
+    if (S.mduracao) body.properties['Duração Motion'] = { select: { name: durMoMap[S.mduracao] } };
+    body.properties['Complexidade Mo']  = ms(compl);
+    body.properties['Qty Motion']       = { number: data.motionQty || 1 };
+    body.properties['Assets Mo']        = ms((data.motion.assets||[]).map(v=>assetsMap[v]));
+    body.properties['Obs Motion']       = txt(data.motionObs);
+  }
+
+  if (data.iaSvcs && data.iaSvcs.length) {
+    body.properties['Serviços IA'] = ms(data.iaSvcs.map(v=>iaSvcMap[v]));
+    body.properties['Obs IA']      = txt(data.iaObs);
+  }
+
+  const res = await fetch('/api/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Submission failed'); }
+}
+
+async function sendEmail(data, est) {
+  // emailjs.init('TODO_PUBLIC_KEY');
+  // emailjs.send('TODO_SERVICE', 'TODO_TEMPLATE', { ... });
+}
+
+// ── SUBMIT ────────────────────────────────────────────
+async function submit() {
+  const data = collectData();
+  const est  = calcEstimate(data);
+  const btn  = document.getElementById('btnNext');
+
+  btn.disabled = true;
+  btn.innerHTML = `<svg style="width:14px;height:14px;fill:currentColor;animation:spin 1s linear infinite" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" opacity=".3"/><path d="M12 4a8 8 0 0 1 8 8h2A10 10 0 0 0 12 2z"/></svg> Enviando...`;
+
+  try {
+    await sendToNotion(data, est);
+    showConfirmation(data, est);
+  } catch(err) {
+    console.error(err);
+    btn.disabled = false;
+    btn.innerHTML = `<svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg> Enviar Briefing`;
+    alert('Erro ao enviar. Tente novamente ou entre em contato pelo WhatsApp.');
+  }
+}
+
+// ── KEYBOARD ──────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const active = document.querySelector('.slide.active');
+    const tag = document.activeElement.tagName;
+    if (tag === 'TEXTAREA') return; // let shift+enter work in textarea
+    if (tag === 'INPUT') { e.preventDefault(); goNext(); }
+    if (!['INPUT','TEXTAREA','BUTTON'].includes(tag)) goNext();
+  }
+});
+
+
+// ── PROPOSAL GENERATOR ────────────────────────────────
+let _d = null, _e = null;
+
+function generateProposal() {
+  if (!_d || !_e) return;
+  const d = _d, est = _e;
+  const fmt = n => n.toLocaleString('pt-BR');
+
+  const svcEdMap   = {corte:'Corte',color:'Color Grade',sfx:'SFX',motion:'Motion/Tipografia',legendas:'Legendas',multicam:'Multi Câmera'};
+  const fmtMap     = {horizontal:'Horizontal',vertical:'Vertical',ambos:'Horizontal + Vertical'};
+  const durHMap    = {'1min':'Até 1 min','3min':'Até 3 min','5min':'Até 5 min','5min+':'5 min+'};
+  const durVMap    = {'30s':'Até 30s','1min':'Até 1 min','1min30':'Até 1min30','3min':'Até 3 min'};
+  const moTipoMap  = {logo:'Logo Animado',vinheta:'Vinheta / Intro',video:'Vídeo Full Motion',elementos:'Elementos Gráficos'};
+  const iaSvcMap   = {'video-zero':'Geração de vídeo do zero','video-img':'Vídeo com imagem base',narracao:'Geração de narração',personagem:'Criação de personagem',animacao:'Animação de personagem','elementos-2d':'Elementos 2D','elementos-3d':'Elementos 3D',storyboard:'Geração de Storyboard'};
+  const prazoMap   = {'2dias':'2 dias úteis','padrao':'10–15 dias úteis','sempressa':'A combinar'};
+
+  // Hero title from services
+  const titles = {edicao:'Edição de Vídeo',motion:'Motion Design',ia:'Produção com IA'};
+  const svcList = d.services.map(s=>titles[s]);
+  const heroTitle = svcList.length === 1 ? svcList[0] : 'Projeto Completo';
+  const [heroA, heroB] = heroTitle.includes(' ') ? [heroTitle.split(' ').slice(0,-1).join(' '), heroTitle.split(' ').slice(-1)[0]] : [heroTitle,''];
+
+  // Deliverables grid
+  let deliverables = '';
+  if (d.edicao) {
+    const qty = d.edicao.formato==='ambos' ? `${d.edicao.qtyH}H + ${d.edicao.qtyV}V` : `${d.edicao.qtyTotal}`;
+    const fmt2 = fmtMap[d.edicao.formato]||'';
+    const dur = (d.edicao.duracao?durHMap[d.edicao.duracao]:'') + (d.vduracao?' · '+durVMap[d.vduracao]:'');
+    deliverables += `<div class="deliverable-item"><div class="d-label">Vídeos</div><div class="d-value">${qty}</div><div class="d-sub">${fmt2}${dur?' · '+dur:''}</div></div>`;
+  }
+  if (d.motion) {
+    const tipos = Array.from(document.querySelectorAll('[data-g="mtype-ck"].sel')).map(el=>moTipoMap[el.dataset.v]).filter(Boolean);
+    deliverables += `<div class="deliverable-item"><div class="d-label">Motion</div><div class="d-value">${d.motionQty}</div><div class="d-sub">${tipos.join(', ')}</div></div>`;
+  }
+  if (d.edicao) {
+    const mat = (d.edicao.material||[]).length ? 'Cliente' : 'A definir';
+    deliverables += `<div class="deliverable-item"><div class="d-label">Material</div><div class="d-value red">${mat}</div><div class="d-sub">Footage fornecida pelo cliente</div></div>`;
+  }
+  deliverables += `<div class="deliverable-item"><div class="d-label">Prazo</div><div class="d-value">${prazoMap[d.prazo]||'A combinar'}</div><div class="d-sub">A partir do kick-off</div></div>`;
+
+  // Services rows
+  let svcRows = '';
+  if (d.edicao) {
+    const svcs = (d.edicao.complexidade||[]).map(v=>svcEdMap[v]).filter(Boolean).join(', ');
+    svcRows += `<div class="service-row"><div><div class="service-name">Edição de Vídeo</div><div class="service-desc">${svcs||'Montagem criativa do material bruto'}</div></div><div class="service-check"></div></div>`;
+  }
+  if (d.motion) {
+    const tipos = Array.from(document.querySelectorAll('[data-g="mtype-ck"].sel')).map(el=>moTipoMap[el.dataset.v]).filter(Boolean);
+    const compl = Array.from(document.querySelectorAll('[data-g="mcomplexidade"].sel')).map(el=>el.querySelector('.ck-name').textContent).join(', ');
+    svcRows += `<div class="service-row"><div><div class="service-name">Motion Design</div><div class="service-desc">${tipos.join(', ')}${compl?' · '+compl:''}</div></div><div class="service-check"></div></div>`;
+  }
+  if (d.iaSvcs && d.iaSvcs.length) {
+    svcRows += `<div class="service-row"><div><div class="service-name">Produção com IA</div><div class="service-desc">${d.iaSvcs.map(v=>iaSvcMap[v]).filter(Boolean).join(', ')}</div></div><div class="service-check"></div></div>`;
+  }
+
+  // Price
+  const base = est.base, antecip = Math.round(base * 0.90 / 50) * 50;
+  const baseStr = fmt(base), anticStr = fmt(antecip);
+  const baseInt = String(base).replace(/\d{2}$/, ''), baseCts = String(base).slice(-2);
+  const waMsgBase = encodeURIComponent(`Olá, quero aprovar a proposta na opção 50% + 50% (R$${baseStr}).`);
+  const waMsgAntic = encodeURIComponent(`Olá, quero aprovar a proposta na opção 100% antecipado (R$${anticStr}).`);
+  const waBase = `https://wa.me/5511966488535?text=${waMsgBase}`;
+  const waAntic = `https://wa.me/5511966488535?text=${waMsgAntic}`;
+
+  // Today + valid until
+  const today = new Date().toLocaleDateString('pt-BR');
+  const validDate = new Date(Date.now()+30*24*60*60*1000).toLocaleDateString('pt-BR');
+  const propNum = String(Date.now()).slice(-3);
+
+  const waSVG = `<svg class="wa-icon" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>`;
+  const logoSVG = `<svg viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg"><polygon fill="#f5f5f0" points="363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03 363.46 380.03"/><path fill="#f5f5f0" d="M480.75,330.63c-6.71-6.9-17.33-10.34-31.88-10.34s-25.09,3.44-31.6,10.34c-6.51,6.89-9.76,18-9.76,33.31v351.54c0,15.32,3.35,26.53,10.05,33.61,6.7,7.09,17.32,10.62,31.88,10.62s25.08-3.63,31.59-10.91c6.51-7.27,9.77-18.38,9.77-33.32v-351.54c0-15.31-3.36-26.42-10.05-33.31ZM458.06,728.12h-17.81v-376.24h17.81v376.24Z"/><path fill="#f5f5f0" d="M597.06,528.23v-164.29c0-15.31-3.35-26.42-10.05-33.31-6.7-6.9-17.33-10.34-31.88-10.34s-25.08,3.44-31.59,10.34c-6.52,6.89-9.77,18-9.77,33.31v345.8c0,17.62,3.25,30.35,9.77,38.2,6.51,7.85,17.23,11.77,32.17,11.77s25.07-3.92,31.59-11.77c6.51-7.85,9.76-20.58,9.76-38.2v-111.44h-32.74v129.82h-17.8v-376.24h17.8v176.35h32.74Z"/><path fill="#f5f5f0" d="M652.78,377.75v-57.46h-32.74v436.55h32.74v-346.87h17.81v346.87h32.74v-379.13l-50.55.04Z"/><path fill="#f5f5f0" d="M732.04,377.73v379.11h32.75v-379.11h-32.75Z"/><path fill="red" d="M668.26,320.29v42.5h96.53v-42.5h-96.53Z"/></svg>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tochi — Proposta ${d.nome}</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+:root{--black:#0d0d0d;--white:#f5f5f0;--red:#e01010;--gray:#2a2a2a;--gray-mid:#444;--gray-light:#888;--green:#1a7a3c}
+body{background:var(--black);color:var(--white);font-family:'Barlow Condensed',sans-serif;min-height:100vh;overflow-x:hidden}
+.page{max-width:900px;margin:0 auto;padding:0 2rem 6rem}
+.print-btn{position:fixed;bottom:2rem;right:2rem;z-index:100;display:flex;align-items:center;gap:.5rem;background:var(--gray);border:1px solid #444;color:var(--gray-light);font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;padding:.6rem 1rem;cursor:pointer;transition:border-color .15s,color .15s}
+.print-btn:hover{border-color:var(--white);color:var(--white)}
+.print-btn svg{width:13px;height:13px;fill:currentColor}
+@media print{.print-btn{display:none!important}body{background:var(--black)!important}.page{padding:0 1.5rem 2rem;max-width:100%}}
+header{display:flex;justify-content:space-between;align-items:center;padding:2rem 0;border-bottom:1px solid var(--gray)}
+.logo-lg{display:block;width:52px}.logo-sm{display:block;width:36px}
+.doc-meta{text-align:right;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--gray-light);line-height:1.8;letter-spacing:.04em}
+.doc-meta span{color:var(--white)}
+.hero{padding:5rem 0 4rem;border-bottom:1px solid var(--gray)}
+.label{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--red);margin-bottom:1rem;display:flex;align-items:center;gap:.6rem}
+.label::before{content:'';display:inline-block;width:18px;height:2px;background:var(--red);flex-shrink:0}
+.hero-title{font-size:clamp(3rem,8vw,6rem);font-weight:900;line-height:.92;letter-spacing:-.01em;text-transform:uppercase;margin-bottom:2rem}
+.hero-title em{font-style:normal;color:var(--red)}
+.client-tag{display:inline-flex;align-items:center;gap:.75rem;background:var(--gray);border:1px solid #333;padding:.5rem 1rem;font-size:.9rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-light)}
+.client-tag strong{color:var(--white)}
+.section{padding:4rem 0;border-bottom:1px solid var(--gray)}
+.section-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2.5rem}
+.section-title{font-size:.72rem;font-family:'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--gray-light)}
+.section-num{font-size:.68rem;font-family:'DM Mono',monospace;color:#333;letter-spacing:.1em}
+.deliverables{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray);border:1px solid var(--gray)}
+.deliverable-item{background:var(--black);padding:1.75rem 2rem;display:flex;flex-direction:column;gap:.4rem}
+.d-label{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-light)}
+.d-value{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;text-transform:uppercase}
+.d-value.red{color:var(--red)}
+.d-sub{font-size:.8rem;font-weight:400;color:var(--gray-light);text-transform:none;letter-spacing:0}
+.services-list{display:flex;flex-direction:column}
+.service-row{display:flex;align-items:center;justify-content:space-between;padding:1.4rem 0;border-bottom:1px solid #1c1c1c;gap:1rem}
+.service-row:last-child{border-bottom:none}
+.service-name{font-size:1.4rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+.service-desc{font-size:.8rem;color:var(--gray-light);font-weight:400;margin-top:.15rem;font-family:'DM Mono',monospace;letter-spacing:.03em}
+.service-check{width:10px;height:10px;background:var(--red);flex-shrink:0}
+.price-block{padding:4rem 0;border-bottom:1px solid var(--gray)}
+.price-main{display:flex;align-items:flex-end;gap:1rem;margin:2rem 0}
+.price-currency{font-size:2rem;font-weight:300;color:var(--gray-light);line-height:1;margin-bottom:.6rem}
+.price-value{font-size:clamp(5rem,12vw,8rem);font-weight:900;line-height:.9;letter-spacing:-.03em}
+.price-cents{font-size:2.5rem;font-weight:700;color:var(--gray-mid);line-height:1;margin-bottom:.5rem}
+.price-meta{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gray-light);letter-spacing:.06em;margin-bottom:2rem}
+.price-meta strong{color:var(--white)}
+.payment-options{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray);border:1px solid var(--gray)}
+.payment-opt{background:var(--black);padding:1.5rem 2rem;display:flex;flex-direction:column}
+.payment-opt.featured{background:var(--red)}
+.payment-opt.featured .p-label,.payment-opt.featured .p-desc{color:rgba(255,255,255,.7)}
+.p-label{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light);margin-bottom:.5rem}
+.p-title{font-size:1.3rem;font-weight:800;text-transform:uppercase;letter-spacing:.02em;margin-bottom:.35rem}
+.p-desc{font-size:.78rem;color:var(--gray-light);font-family:'DM Mono',monospace;line-height:1.5}
+.badge{display:inline-block;font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.1em;padding:.2rem .5rem;margin-top:.6rem;margin-bottom:1.25rem}
+.badge-dark{background:var(--gray);color:var(--gray-light)}.badge-light{background:rgba(255,255,255,.15);color:#fff}
+.wa-btn{display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:auto;padding:.75rem 1rem;font-family:'Barlow Condensed',sans-serif;font-size:.85rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border:1px solid rgba(255,255,255,.2);color:var(--white);background:transparent;cursor:pointer;transition:background .15s}
+.wa-btn:hover{background:rgba(255,255,255,.1)}.wa-icon{width:15px;height:15px;fill:currentColor;flex-shrink:0}
+.pix-block{padding:4rem 0;border-bottom:1px solid var(--gray)}
+.pix-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray);border:1px solid var(--gray)}
+.pix-item{background:var(--black);padding:1.5rem 2rem;display:flex;flex-direction:column;gap:.35rem}
+.pix-item.full{grid-column:1/-1}
+.pix-sub{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--gray-light);letter-spacing:.1em;text-transform:uppercase}
+.pix-key{font-size:1.5rem;font-weight:800;color:var(--red)}
+.pix-val{font-family:'DM Mono',monospace;font-size:.78rem;color:var(--white);letter-spacing:.04em}
+.termos{padding:4rem 0;border-bottom:1px solid var(--gray)}
+.termos-list{display:flex;flex-direction:column}
+.termo-item{display:flex;gap:2rem;padding:1.5rem 0;border-bottom:1px solid #1a1a1a}
+.termo-item:last-child{border-bottom:none}
+.termo-num{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--red);letter-spacing:.1em;min-width:2rem;padding-top:.1rem;flex-shrink:0}
+.termo-text{font-size:.88rem;color:var(--gray-light);line-height:1.65;font-family:'DM Mono',monospace;letter-spacing:.01em}
+.termo-text strong{color:var(--white);font-weight:500}
+.cta-final{padding:4rem 0;border-bottom:1px solid var(--gray);text-align:center}
+.cta-validity{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-light);margin-bottom:1.5rem}
+.cta-validity span{color:var(--red)}
+.cta-btn{display:inline-flex;align-items:center;justify-content:center;gap:.6rem;padding:1rem 2.5rem;font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;background:var(--red);color:var(--white);border:none;cursor:pointer;transition:opacity .15s}
+.cta-btn:hover{opacity:.88}
+footer{padding:4rem 0 0;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:2rem}
+.footer-site{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gray-light);letter-spacing:.08em}
+.footer-site span{color:var(--red)}
+.footer-contact{text-align:right;font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gray-light);line-height:2;letter-spacing:.04em}
+.footer-contact strong{color:var(--white);font-weight:500}
+.accent-bar{height:4px;background:var(--red);width:100%;margin-top:3rem}
+@media(max-width:620px){.deliverables,.payment-options,.pix-grid{grid-template-columns:1fr}.hero-title{font-size:3rem}footer{flex-direction:column}.footer-contact{text-align:left}}
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">
+  <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+  Salvar PDF
+</button>
+<div class="page">
+  <header>
+    <svg class="logo-lg" viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg">${logoSVG.replace('<svg viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg">','').replace('</svg>','')}</svg>
+    <div class="doc-meta">PROPOSTA COMERCIAL &nbsp;·&nbsp; <span>N.º ${propNum}</span><br>DATA <span>${today}</span><br>VÁLIDA ATÉ <span>${validDate}</span></div>
+  </header>
+  <div class="hero">
+    <div class="label">Proposta para</div>
+    <h1 class="hero-title">${heroA}<br><em>${heroB}</em></h1>
+    <div class="client-tag">Cliente &nbsp;<strong>${d.nome}${d.empresa?' · '+d.empresa:''}</strong></div>
+  </div>
+  <div class="section">
+    <div class="section-header"><span class="section-title">Escopo do projeto</span><span class="section-num">01</span></div>
+    <div class="deliverables">${deliverables}</div>
+  </div>
+  <div class="section">
+    <div class="section-header"><span class="section-title">O que está incluso</span><span class="section-num">02</span></div>
+    <div class="services-list">${svcRows}</div>
+  </div>
+  <div class="price-block">
+    <div class="section-header"><span class="section-title">Investimento</span><span class="section-num">03</span></div>
+    <div class="price-main">
+      <div class="price-currency">R$</div>
+      <div class="price-value">${fmt(base).replace(/,\d+$/,'')}</div>
+      <div class="price-cents">,00</div>
+    </div>
+    <div class="price-meta">Prazo: <strong>${prazoMap[d.prazo]||'A combinar'}</strong></div>
+    <div class="payment-options">
+      <div class="payment-opt">
+        <div class="p-label">Padrão</div><div class="p-title">50% + 50%</div>
+        <div class="p-desc">R$${fmt(Math.round(base/2))} na aprovação<br>R$${fmt(Math.round(base/2))} na entrega</div>
+        <div class="badge badge-dark">SEM DESCONTO</div>
+        <a class="wa-btn" href="${waBase}" target="_blank" rel="noopener">${waSVG} Aceitar esta opção</a>
+      </div>
+      <div class="payment-opt featured">
+        <div class="p-label">Melhor opção</div><div class="p-title">100% Antecipado</div>
+        <div class="p-desc">R$${anticStr} antes do início<br>10% de desconto aplicado</div>
+        <div class="badge badge-light">— 10% · ECONOMIA R$${fmt(base-antecip)}</div>
+        <a class="wa-btn" href="${waAntic}" target="_blank" rel="noopener">${waSVG} Aceitar esta opção</a>
+      </div>
+    </div>
+  </div>
+  <div class="pix-block">
+    <div class="section-header"><span class="section-title">Dados para pagamento</span><span class="section-num">04</span></div>
+    <div class="pix-grid">
+      <div class="pix-item full"><div class="pix-sub">Chave Pix</div><div class="pix-key">eduardo@tochi.com.br</div></div>
+      <div class="pix-item"><div class="pix-sub">Banco</div><div class="pix-val">Inter · 077</div></div>
+      <div class="pix-item"><div class="pix-sub">Favorecido</div><div class="pix-val">Eduardo Bertochi</div></div>
+      <div class="pix-item"><div class="pix-sub">Agência / Conta</div><div class="pix-val">0001 · 465832938</div></div>
+      <div class="pix-item"><div class="pix-sub">CNPJ</div><div class="pix-val">42.219.966/0001-64</div></div>
+    </div>
+  </div>
+  <div class="termos">
+    <div class="section-header"><span class="section-title">Condições gerais</span><span class="section-num">05</span></div>
+    <div class="termos-list">
+      <div class="termo-item"><div class="termo-num">01</div><div class="termo-text">O prazo começa a contar a partir do <strong>recebimento integral do material bruto</strong> e da confirmação de pagamento da primeira parcela.</div></div>
+      <div class="termo-item"><div class="termo-num">02</div><div class="termo-text">Estão incluídas <strong>2 rodadas de revisão</strong>. Revisões adicionais ou mudanças de escopo serão cobradas separadamente.</div></div>
+      <div class="termo-item"><div class="termo-num">03</div><div class="termo-text">Em caso de cancelamento após o início, serão cobrados os custos já incorridos, com valor mínimo de <strong>30% do total aprovado</strong>.</div></div>
+      <div class="termo-item"><div class="termo-num">04</div><div class="termo-text">A aprovação formal desta proposta, por e-mail ou mensagem, <strong>caracteriza aceite integral</strong> das condições aqui descritas.</div></div>
+    </div>
+  </div>
+  <div class="cta-final">
+    <div class="cta-validity">Válida até <span>${validDate}</span></div>
+    <a class="cta-btn" href="https://wa.me/5511966488535?text=${encodeURIComponent('Olá, quero fechar a proposta — '+heroTitle+'.')}" target="_blank" rel="noopener">
+      ${waSVG} Fechar proposta via WhatsApp
+    </a>
+  </div>
+  <footer>
+    <div><div class="footer-site"><span>tochi</span>.com.br</div></div>
+    <div class="footer-contact"><strong>Eduardo Bertochi</strong><br>eduardo@tochi.com.br</div>
+  </footer>
+  <div class="accent-bar"></div>
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `orcamento-${d.nome.split(' ')[0].toLowerCase()}-${propNum}.html`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ── INIT ──────────────────────────────────────────────
+updateNav();
+</script>
+</body>
+</html>

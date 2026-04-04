@@ -1,4 +1,4 @@
-const DB_ID = 'f1a687c01a0d4924933bc010dfd0895c';
+const DB_ID = 'c8e898644f7043e2b440f495b28bac46';
 
 const STAGES = [
   { key: '🆕 Novo',             label: 'Briefing recebido',    desc: 'Seu briefing foi recebido e está na fila de análise.' },

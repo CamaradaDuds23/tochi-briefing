@@ -1,4 +1,4 @@
-const DB_ID = 'f1a687c01a0d4924933bc010dfd0895c';
+const DB_ID = 'c8e898644f7043e2b440f495b28bac46';
 
 export default async function handler(req, res) {
   const TOKEN = process.env.NOTION_TOKEN;

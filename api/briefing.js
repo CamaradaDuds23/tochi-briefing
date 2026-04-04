@@ -118,7 +118,7 @@ export default async function handler(req, res) {
 <meta property="og:type" content="website">
 <meta property="og:title" content="Briefing ${propId} · ${clientDisplay}">
 <meta property="og:description" content="Briefing de projeto · ${servicos}">
-<meta property="og:image" content="https://tochi-briefing.vercel.app/api/og">
+<meta property="og:image" content="https://tochi-briefing.vercel.app/og.png">
 <meta property="og:site_name" content="Tochi">
 <meta name="theme-color" content="#0d0d0d">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">

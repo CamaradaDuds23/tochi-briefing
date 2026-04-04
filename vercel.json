@@ -1,10 +1,9 @@
 {
   "functions": {
-    "api/submit.js":      { "memory": 128, "maxDuration": 10 },
-    "api/get-briefing.js":{ "memory": 128, "maxDuration": 10 },
-    "api/briefing.js":    { "memory": 128, "maxDuration": 10 },
-    "api/proposal.js":    { "memory": 128, "maxDuration": 10 },
-    "api/status.js":      { "memory": 128, "maxDuration": 10 },
-    "api/og.js":          { "runtime": "edge" }
+    "api/submit.js":       { "memory": 128, "maxDuration": 10 },
+    "api/get-briefing.js": { "memory": 128, "maxDuration": 10 },
+    "api/briefing.js":     { "memory": 128, "maxDuration": 10 },
+    "api/proposal.js":     { "memory": 128, "maxDuration": 10 },
+    "api/status.js":       { "memory": 128, "maxDuration": 10 }
   }
 }

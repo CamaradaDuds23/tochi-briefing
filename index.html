@@ -622,12 +622,20 @@ footer.cf{
     </div>
 
     <div style="display:flex;flex-wrap:wrap;gap:1.5rem;max-width:640px;margin-bottom:1.75rem">
-      <div class="qty-group" id="ia-dur-group">
-        <span class="qty-label">Duração do vídeo/narração (minutos)</span>
+      <div class="qty-group" id="ia-video-group" style="display:none">
+        <span class="qty-label">Duração do vídeo (min)</span>
         <div class="qty-row">
-          <button type="button" class="qty-btn" onclick="adjQty('ia-dur',-1)">−</button>
-          <input type="number" class="qty-val" id="ia-dur-val" value="1" min="1" max="60" style="width:72px">
-          <button type="button" class="qty-btn" onclick="adjQty('ia-dur',1)">+</button>
+          <button type="button" class="qty-btn" onclick="adjQty('ia-video',-1)">−</button>
+          <input type="number" class="qty-val" id="ia-video-val" value="1" min="1" max="60" style="width:72px">
+          <button type="button" class="qty-btn" onclick="adjQty('ia-video',1)">+</button>
+        </div>
+      </div>
+      <div class="qty-group" id="ia-audio-group" style="display:none">
+        <span class="qty-label">Duração da narração (min)</span>
+        <div class="qty-row">
+          <button type="button" class="qty-btn" onclick="adjQty('ia-audio',-1)">−</button>
+          <input type="number" class="qty-val" id="ia-audio-val" value="1" min="1" max="60" style="width:72px">
+          <button type="button" class="qty-btn" onclick="adjQty('ia-audio',1)">+</button>
         </div>
       </div>
       <div class="qty-group" id="ia-frames-group" style="display:none">
@@ -1022,9 +1030,11 @@ function setTog(group, val) {
 function toggleCk(el) { el.classList.toggle('sel'); }
 function updateIaFields() {
   const sel = Array.from(document.querySelectorAll('[data-g="ia-svc"].sel')).map(e=>e.dataset.v);
-  const hasVideo = sel.some(v => ['video-zero','video-img','narracao'].includes(v));
+  const hasVideo = sel.some(v => ['video-zero','video-img'].includes(v));
+  const hasAudio = sel.includes('narracao');
   const hasStory = sel.includes('storyboard');
-  document.getElementById('ia-dur-group').style.display = hasVideo ? '' : 'none';
+  document.getElementById('ia-video-group').style.display = hasVideo ? '' : 'none';
+  document.getElementById('ia-audio-group').style.display = hasAudio ? '' : 'none';
   document.getElementById('ia-frames-group').style.display = hasStory ? '' : 'none';
 }
 function toggleIaSvc(el) {
@@ -1100,7 +1110,8 @@ function collectData() {
     motionQty: parseInt(document.getElementById('mq-val') ? document.getElementById('mq-val').value : 1)||1,
     motionObs: document.getElementById('f-motion-obs') ? document.getElementById('f-motion-obs').value.trim() : '',
     iaSvcs: Array.from(document.querySelectorAll('[data-g="ia-svc"].sel')).map(i=>i.dataset.v),
-    iaDurMin: parseInt(document.getElementById('ia-dur-val')?.value)||1,
+    iaMinVideo: parseInt(document.getElementById('ia-video-val')?.value)||1,
+    iaMinAudio: parseInt(document.getElementById('ia-audio-val')?.value)||1,
     iaFrames: parseInt(document.getElementById('ia-frames-val')?.value)||10,
     iaObs: document.getElementById('f-ia-obs') ? document.getElementById('f-ia-obs').value.trim() : '',
     obs: document.getElementById('f-obs').value.trim()
@@ -1155,13 +1166,14 @@ function calcEstimate(data) {
 
   // IA SERVICES
   if (data.iaSvcs && data.iaSvcs.length) {
-    const dur = data.iaDurMin || 1;
+    const vmin   = data.iaMinVideo || 1;
+    const amin   = data.iaMinAudio || 1;
     const frames = data.iaFrames || 10;
     let iaTotal = 0;
     data.iaSvcs.forEach(svc => {
-      if (svc === 'video-zero')  iaTotal += 800 * dur;
-      if (svc === 'video-img')   iaTotal += 500 * dur;
-      if (svc === 'narracao')    iaTotal += 150 * dur;
+      if (svc === 'video-zero')  iaTotal += 800 * vmin;
+      if (svc === 'video-img')   iaTotal += 500 * vmin;
+      if (svc === 'narracao')    iaTotal += 150 * amin;
       if (svc === 'personagem')  iaTotal += 1200;
       if (svc === 'animacao')    iaTotal += 900;
       if (svc === 'storyboard')  iaTotal += 100 * frames;
@@ -1280,7 +1292,9 @@ async function sendToNotion(data, est) {
 
   if (data.iaSvcs && data.iaSvcs.length) {
     body.properties['Serviços IA'] = ms(data.iaSvcs.map(v=>iaSvcMap[v]));
-    body.properties['Obs IA']      = txt(data.iaObs);
+    body.properties['Obs IA']       = txt(data.iaObs);
+    if (data.iaMinVideo) body.properties['Qty Min Vídeo'] = { number: data.iaMinVideo };
+    if (data.iaMinAudio) body.properties['Qty Min Áudio'] = { number: data.iaMinAudio };
   }
 
   const res = await fetch('/api/submit', {
@@ -1583,6 +1597,68 @@ footer{padding:4rem 0 0;display:flex;justify-content:space-between;align-items:f
 
 // ── INIT ──────────────────────────────────────────────
 updateNav();
+
+// Auto-load briefing if ?prop=PROP-XXX in URL (staff only)
+(async function() {
+  const params = new URLSearchParams(window.location.search);
+  const propParam = params.get('prop');
+  const isStaff   = params.get('staff') === 'tochi';
+  if (!propParam || !isStaff) return;
+
+  // Show loading state
+  document.getElementById('slidesWrap').style.display = 'none';
+  document.querySelector('.slide-nav').style.display = 'none';
+  const loading = document.createElement('div');
+  loading.id = 'propLoader';
+  loading.style.cssText = 'position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;font-family:DM Mono,monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-light)';
+  loading.innerHTML = `<svg style="width:20px;height:20px;fill:var(--red);animation:spin 1s linear infinite" viewBox="0 0 24 24"><path d="M12 4a8 8 0 0 1 8 8h2A10 10 0 0 0 12 2z"/></svg>Carregando briefing ${propParam}...`;
+  document.body.appendChild(loading);
+
+  try {
+    const r = await fetch('/api/get-briefing?id=' + encodeURIComponent(propParam));
+    const b = await r.json();
+    if (!r.ok) throw new Error(b.error || 'Erro ao buscar briefing');
+
+    // Map Notion values back to internal data shape
+    const prazoRevMap = {'Urgente até 2 dias':'2dias','Padrão 10+ dias':'padrao','Sem urgência':'sempressa'};
+    const data = {
+      nome: b.nome, empresa: b.empresa, whatsapp: b.whatsapp,
+      email: b.email, descricao: b.descricao, briefLink: b.briefLink,
+      services: (b.servicos||[]).map(s => s==='Edição de Vídeo'?'edicao':s==='Motion Design'?'motion':s==='Produção com IA'?'ia':null).filter(Boolean),
+      prazo: prazoRevMap[b.prazo] || 'padrao',
+      vduracao: null,
+      edicao: b.servicos?.includes('Edição de Vídeo') ? {
+        formato: b.formato?.toLowerCase() || 'horizontal',
+        duracao: {'Até 1 min':'1min','Até 3 min':'3min','Até 5 min':'5min','5 min+':'5min+'}[b.duracaoH] || null,
+        qtyH: b.qtyH || 1, qtyV: b.qtyV || 0,
+        qtyTotal: (b.qtyH||0) + (b.qtyV||0) || 1,
+        complexidade: [], material: []
+      } : null,
+      motion: b.servicos?.includes('Motion Design') ? {
+        tipo: null, duracao: null, assets: []
+      } : null,
+      iaSvcs: (b.servicosIA||[]).map(s => {
+        const m = {'Geração de vídeo do zero':'video-zero','Vídeo com imagem base':'video-img','Geração de narração':'narracao','Criação de personagem':'personagem','Animação de personagem':'animacao','Geração de Storyboard':'storyboard'};
+        return m[s];
+      }).filter(Boolean),
+      iaMinVideo: b.qtyMinVideo || 1,
+      iaMinAudio: b.qtyMinAudio || 1,
+      iaFrames: 10, iaObs: b.obsIA,
+      motionQty: b.qtyMotion || 1, motionObs: b.obsMotion,
+      referencias: (b.refs||'').split('\n').filter(Boolean),
+      obs: b.obs, complexidadeObs: b.obsEdicao,
+    };
+
+    const est = calcEstimate(data);
+    _propId = b.propId;
+
+    document.getElementById('propLoader').remove();
+    showConfirmation(data, est);
+
+  } catch(err) {
+    document.getElementById('propLoader').innerHTML = '⚠ ' + err.message;
+  }
+})();
 </script>
 </body>
 </html>

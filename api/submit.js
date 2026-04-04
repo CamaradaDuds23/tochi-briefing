@@ -92,7 +92,11 @@ export default async function handler(req, res) {
         'Content-Type':   'application/json',
         'Notion-Version': '2022-06-28'
       },
-      body: JSON.stringify({ ...req.body, children: buildPageContent(req.body.properties || {}) })
+      body: JSON.stringify({
+        ...req.body,
+        properties: { ...req.body.properties, 'Status': { select: { name: '🆕 Novo' } } },
+        children: buildPageContent(req.body.properties || {})
+      })
     });
 
     const notionData = await notionRes.json();
@@ -106,6 +110,22 @@ export default async function handler(req, res) {
     const propNum = uid?.number ?? null;
     const propId  = propNum ? `PROP-${String(propNum).padStart(3, '0')}` : null;
     const pageUrl = notionData.url || null;
+
+    // Add links, status and valor final to Notion page via PATCH
+    if (propId && notionData.id) {
+      const pageId = notionData.id;
+      if (pageId) {
+        fetch(`https://api.notion.com/v1/pages/${notionData.id}`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${NOTION_TOKEN}`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28' },
+          body: JSON.stringify({ properties: {
+            'Link Proposta': { url: `https://tochi-briefing.vercel.app/api/proposal?id=${propId}` },
+            'Link Briefing': { url: `https://tochi-briefing.vercel.app/api/briefing?id=${propId}` },
+            'Valor Final':   { number: req.body.properties?.['Estimativa']?.number || null }
+          }})
+        }).catch(e => console.error('PATCH error:', e));
+      }
+    }
 
     // ── 2. Enviar e-mail via Resend ───────────────────────────────────────
     if (RESEND_KEY) {

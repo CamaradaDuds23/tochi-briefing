@@ -612,14 +612,33 @@ footer.cf{
 
     <div class="check-group" style="max-width:720px">
       <div class="check-grid" style="grid-template-columns:repeat(2,1fr)">
-        <div class="ck-item" data-g="ia-svc" data-v="video-zero" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Geração de vídeo do zero</span></div>
-        <div class="ck-item" data-g="ia-svc" data-v="video-img" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Vídeo com imagem base</span></div>
-        <div class="ck-item" data-g="ia-svc" data-v="narracao" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Geração de narração</span></div>
-        <div class="ck-item" data-g="ia-svc" data-v="personagem" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Criação de personagem</span></div>
-        <div class="ck-item" data-g="ia-svc" data-v="animacao" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Animação de personagem</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="video-zero" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Geração de vídeo do zero</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="video-img" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Vídeo com imagem base</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="narracao" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Geração de narração</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="personagem" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Criação de personagem</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="animacao" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Animação de personagem</span></div>
         <div class="ck-item" data-g="ia-svc" data-v="elementos-2d" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Elementos 2D</span></div>
         <div class="ck-item" data-g="ia-svc" data-v="elementos-3d" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Elementos 3D</span></div>
-        <div class="ck-item" data-g="ia-svc" data-v="storyboard" onclick="toggleCk(this)"><div class="ck-box"></div><span class="ck-name">Geração de Storyboard</span></div>
+        <div class="ck-item" data-g="ia-svc" data-v="storyboard" onclick="toggleIaSvc(this)"><div class="ck-box"></div><span class="ck-name">Geração de Storyboard</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:1.5rem;max-width:640px;margin-bottom:1.75rem">
+      <div class="qty-group" id="ia-dur-group">
+        <span class="qty-label">Duração do vídeo/narração (minutos)</span>
+        <div class="qty-row">
+          <button type="button" class="qty-btn" onclick="adjQty('ia-dur',-1)">−</button>
+          <input type="number" class="qty-val" id="ia-dur-val" value="1" min="1" max="60" style="width:72px">
+          <button type="button" class="qty-btn" onclick="adjQty('ia-dur',1)">+</button>
+        </div>
+      </div>
+      <div class="qty-group" id="ia-frames-group" style="display:none">
+        <span class="qty-label">Número de telas (storyboard)</span>
+        <div class="qty-row">
+          <button type="button" class="qty-btn" onclick="adjQty('ia-frames',-1)">−</button>
+          <input type="number" class="qty-val" id="ia-frames-val" value="10" min="1" max="200" style="width:72px">
+          <button type="button" class="qty-btn" onclick="adjQty('ia-frames',1)">+</button>
+        </div>
       </div>
     </div>
 
@@ -1003,6 +1022,17 @@ function setTog(group, val) {
 
 // ── CHECKBOXES ────────────────────────────────────────
 function toggleCk(el) { el.classList.toggle('sel'); }
+function updateIaFields() {
+  const sel = Array.from(document.querySelectorAll('[data-g="ia-svc"].sel')).map(e=>e.dataset.v);
+  const hasVideo = sel.some(v => ['video-zero','video-img','narracao'].includes(v));
+  const hasStory = sel.includes('storyboard');
+  document.getElementById('ia-dur-group').style.display = hasVideo ? '' : 'none';
+  document.getElementById('ia-frames-group').style.display = hasStory ? '' : 'none';
+}
+function toggleIaSvc(el) {
+  el.classList.toggle('sel');
+  updateIaFields();
+}
 function toggleMotionTipo(el) {
   el.classList.toggle('sel');
   document.getElementById('e-mtype').classList.remove('on');
@@ -1072,6 +1102,8 @@ function collectData() {
     motionQty: parseInt(document.getElementById('mq-val') ? document.getElementById('mq-val').value : 1)||1,
     motionObs: document.getElementById('f-motion-obs') ? document.getElementById('f-motion-obs').value.trim() : '',
     iaSvcs: Array.from(document.querySelectorAll('[data-g="ia-svc"].sel')).map(i=>i.dataset.v),
+    iaDurMin: parseInt(document.getElementById('ia-dur-val')?.value)||1,
+    iaFrames: parseInt(document.getElementById('ia-frames-val')?.value)||10,
     iaObs: document.getElementById('f-ia-obs') ? document.getElementById('f-ia-obs').value.trim() : '',
     obs: document.getElementById('f-obs').value.trim()
   };
@@ -1123,6 +1155,22 @@ function calcEstimate(data) {
     total += base;
   }
 
+  // IA SERVICES
+  if (data.iaSvcs && data.iaSvcs.length) {
+    const dur = data.iaDurMin || 1;
+    const frames = data.iaFrames || 10;
+    let iaTotal = 0;
+    data.iaSvcs.forEach(svc => {
+      if (svc === 'video-zero')  iaTotal += 800 * dur;
+      if (svc === 'video-img')   iaTotal += 500 * dur;
+      if (svc === 'narracao')    iaTotal += 150 * dur;
+      if (svc === 'personagem')  iaTotal += 1200;
+      if (svc === 'animacao')    iaTotal += 900;
+      if (svc === 'storyboard')  iaTotal += 100 * frames;
+    });
+    total += iaTotal;
+  }
+
   // PRAZO — acréscimo apenas para urgente 2 dias
   if (data.prazo === '2dias') total = Math.round(total * 1.40);
 
@@ -1142,7 +1190,9 @@ function showConfirmation(data, est) {
   _d = data; _e = est;
   document.getElementById('progFill').style.width = '100%';
   document.getElementById('confirmPage').classList.add('on');
-  document.getElementById('propPanel').classList.add('on');
+  if (new URLSearchParams(window.location.search).get('staff') === 'tochi') {
+    document.getElementById('propPanel').classList.add('on');
+  }
   window.scrollTo(0,0);
 
   const fmt = n => n.toLocaleString('pt-BR');

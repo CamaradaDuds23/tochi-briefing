@@ -111,6 +111,33 @@ export default async function handler(req, res) {
     const propId  = propNum ? `PROP-${String(propNum).padStart(3, '0')}` : null;
     const pageUrl = notionData.url || null;
 
+    // ── Numeração por cliente ──────────────────────────────────────────────
+    const clientKey = (p['Empresa']?.rich_text?.[0]?.text?.content || p['Nome']?.title?.[0]?.text?.content || '').trim();
+    const clientPrefix = clientKey.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ0-9]/g, '').toUpperCase().slice(0, 4) || 'CLI';
+
+    let clientSeq = 1;
+    try {
+      const existingRes = await fetch(`https://api.notion.com/v1/databases/${req.body.parent?.database_id}/query`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${NOTION_TOKEN}`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28' },
+        body: JSON.stringify({
+          filter: {
+            or: [
+              { property: 'Empresa', rich_text: { equals: clientKey } },
+              ...(!req.body.properties?.['Empresa']?.rich_text?.[0]?.text?.content
+                ? [{ property: 'Nome', title: { equals: clientKey } }]
+                : [])
+            ]
+          }
+        })
+      });
+      const existing = await existingRes.json();
+      clientSeq = (existing.results?.length || 0); // current entry already counted
+      if (clientSeq < 1) clientSeq = 1;
+    } catch(e) { console.error('Client seq error:', e); }
+
+    const clientId = `${clientPrefix}-${String(clientSeq).padStart(3, '0')}`;
+
     // Add links, status and valor final to Notion page via PATCH
     if (propId && notionData.id) {
       const pageId = notionData.id;
@@ -119,9 +146,11 @@ export default async function handler(req, res) {
           method: 'PATCH',
           headers: { 'Authorization': `Bearer ${NOTION_TOKEN}`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28' },
           body: JSON.stringify({ properties: {
-            'Link Proposta': { url: `https://tochi-briefing.vercel.app/api/proposal?id=${propId}` },
-            'Link Briefing': { url: `https://tochi-briefing.vercel.app/api/briefing?id=${propId}` },
-            'Valor Final':   { number: req.body.properties?.['Estimativa']?.number || null }
+            'Link Proposta':    { url: `https://tochi-briefing.vercel.app/api/proposal?id=${propId}` },
+            'Link Briefing':    { url: `https://tochi-briefing.vercel.app/api/briefing?id=${propId}` },
+            'Valor Final':      { number: req.body.properties?.['Estimativa']?.number || null },
+            'N. Cliente':       { rich_text: [{ text: { content: clientId } }] },
+            'Histórico Preço':  { rich_text: [{ text: { content: `${new Date().toLocaleDateString('pt-BR')} — Estimativa automática: R$ ${req.body.properties?.['Estimativa']?.number ?? '—'}` } }] }
           }})
         }).catch(e => console.error('PATCH error:', e));
       }
@@ -149,6 +178,7 @@ export default async function handler(req, res) {
   </div>
   <div style="padding:24px 28px">
     <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr><td style="padding:8px 0;border-bottom:1px solid #2a2a2a;color:#888;width:140px">N. Cliente</td><td style="padding:8px 0;border-bottom:1px solid #2a2a2a;font-weight:700">${clientId}</td></tr>
       <tr><td style="padding:8px 0;border-bottom:1px solid #2a2a2a;color:#888;width:140px">WhatsApp</td><td style="padding:8px 0;border-bottom:1px solid #2a2a2a">${wa}</td></tr>
       <tr><td style="padding:8px 0;border-bottom:1px solid #2a2a2a;color:#888">E-mail</td><td style="padding:8px 0;border-bottom:1px solid #2a2a2a">${email}</td></tr>
       <tr><td style="padding:8px 0;border-bottom:1px solid #2a2a2a;color:#888">Serviços</td><td style="padding:8px 0;border-bottom:1px solid #2a2a2a">${servicos}</td></tr>
@@ -174,7 +204,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           from:    'Tochi Briefing <briefing@tochi.com.br>',
           to:      ['eduardo@tochi.com.br'],
-          subject: `🎬 Novo briefing — ${nome}${empresa ? ' · '+empresa : ''} ${propId ? '('+propId+')' : ''}`,
+          subject: `🎬 Novo briefing — ${nome}${empresa ? ' · '+empresa : ''} ${propId ? '('+propId+')' : ''} [${clientId}]`,
           html:    emailHtml
         })
       }).catch(err => console.error('Email error (non-fatal):', err));

@@ -78,7 +78,7 @@ export default async function handler(req, res) {
           'Content-Type':  'application/json'
         },
         body: JSON.stringify({
-          from:    'Tochi Briefing <onboarding@resend.dev>',
+          from:    'Tochi Briefing <briefing@tochi.com.br>',
           to:      ['eduardo@tochi.com.br'],
           subject: `🎬 Novo briefing — ${nome}${empresa ? ' · '+empresa : ''} ${propId ? '('+propId+')' : ''}`,
           html:    emailHtml

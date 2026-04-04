@@ -1199,8 +1199,8 @@ async function sendToNotion(data, est) {
       'Email':       { email:        data.email },
       'Serviços':    ms(data.services.map(s=>svcNames[s])),
       'Descrição':   txt(data.descricao),
-      'Brief Link':  { url: data.briefingLink || null },
-      'Prazo':       { select: data.prazo ? { name: prazoMap[data.prazo] } : null },
+      ...(data.briefingLink ? { 'Brief Link': { url: data.briefingLink } } : {}),
+      ...(data.prazo ? { 'Prazo': { select: { name: prazoMap[data.prazo] } } } : {}),
       'Estimativa':  { number: est.base },
       'Referências': txt((data.referencias||[]).join('\n')),
       'Observações': txt(data.obs),
@@ -1267,7 +1267,7 @@ async function submit() {
     console.error(err);
     btn.disabled = false;
     btn.innerHTML = `<svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg> Enviar Briefing`;
-    alert('Erro ao enviar. Tente novamente ou entre em contato pelo WhatsApp.');
+    alert('Erro ao enviar: ' + err.message + '\n\nEntre em contato pelo WhatsApp.');
   }
 }
 

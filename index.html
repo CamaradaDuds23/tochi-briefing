@@ -1154,7 +1154,7 @@ function showConfirmation(data, est) {
   };
   const fmtMap = { horizontal: 'Horizontal', vertical: 'Vertical', ambos: 'Horizontal + Vertical' };
 
-  document.getElementById('c-sub').textContent = `${data.nome} · orçamento formal em até 24h`;
+  document.getElementById('c-sub').textContent = `${data.nome} · orçamento formal em até 24h${_propId ? ' · '+_propId : ''}`;
   document.getElementById('c-nome').textContent = data.nome;
   document.getElementById('c-empresa').textContent = data.empresa || '—';
   document.getElementById('c-svc').textContent = data.services.map(s=>svcMap[s]).join(' + ') || '—';
@@ -1241,6 +1241,9 @@ async function sendToNotion(data, est) {
     body: JSON.stringify(body)
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Submission failed'); }
+  const result = await res.json();
+  _propId = result.propId || null;
+  _pageUrl = result.pageUrl || null;
 }
 
 async function sendEmail(data, est) {
@@ -1281,7 +1284,7 @@ document.addEventListener('keydown', e => {
 
 
 // ── PROPOSAL GENERATOR ────────────────────────────────
-let _d = null, _e = null;
+let _d = null, _e = null, _propId = null, _pageUrl = null;
 
 function generateProposal() {
   if (!_d || !_e) return;
@@ -1347,7 +1350,7 @@ function generateProposal() {
   // Today + valid until
   const today = new Date().toLocaleDateString('pt-BR');
   const validDate = new Date(Date.now()+30*24*60*60*1000).toLocaleDateString('pt-BR');
-  const propNum = String(Date.now()).slice(-3);
+  const propNum = _propId || String(Date.now()).slice(-3);
 
   const waSVG = `<svg class="wa-icon" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>`;
   const logoSVG = `<svg viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg"><polygon fill="#f5f5f0" points="363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03 363.46 380.03"/><path fill="#f5f5f0" d="M480.75,330.63c-6.71-6.9-17.33-10.34-31.88-10.34s-25.09,3.44-31.6,10.34c-6.51,6.89-9.76,18-9.76,33.31v351.54c0,15.32,3.35,26.53,10.05,33.61,6.7,7.09,17.32,10.62,31.88,10.62s25.08-3.63,31.59-10.91c6.51-7.27,9.77-18.38,9.77-33.32v-351.54c0-15.31-3.36-26.42-10.05-33.31ZM458.06,728.12h-17.81v-376.24h17.81v376.24Z"/><path fill="#f5f5f0" d="M597.06,528.23v-164.29c0-15.31-3.35-26.42-10.05-33.31-6.7-6.9-17.33-10.34-31.88-10.34s-25.08,3.44-31.59,10.34c-6.52,6.89-9.77,18-9.77,33.31v345.8c0,17.62,3.25,30.35,9.77,38.2,6.51,7.85,17.23,11.77,32.17,11.77s25.07-3.92,31.59-11.77c6.51-7.85,9.76-20.58,9.76-38.2v-111.44h-32.74v129.82h-17.8v-376.24h17.8v176.35h32.74Z"/><path fill="#f5f5f0" d="M652.78,377.75v-57.46h-32.74v436.55h32.74v-346.87h17.81v346.87h32.74v-379.13l-50.55.04Z"/><path fill="#f5f5f0" d="M732.04,377.73v379.11h32.75v-379.11h-32.75Z"/><path fill="red" d="M668.26,320.29v42.5h96.53v-42.5h-96.53Z"/></svg>`;
@@ -1525,7 +1528,7 @@ footer{padding:4rem 0 0;display:flex;justify-content:space-between;align-items:f
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `orcamento-${d.nome.split(' ')[0].toLowerCase()}-${propNum}.html`;
+  a.download = `orcamento-${d.nome.split(' ')[0].toLowerCase()}-${propNum.replace('PROP-','')}.html`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }

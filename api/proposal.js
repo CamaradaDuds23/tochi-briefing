@@ -1,269 +1,119 @@
 const DB_ID = 'c8e898644f7043e2b440f495b28bac46';
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
 export default async function handler(req, res) {
   const TOKEN = process.env.NOTION_TOKEN;
-  const raw   = req.query.id || '';
-  const num   = parseInt(raw.replace(/PROP-?/i, ''));
+  const raw = req.query.id || '';
+  const num = parseInt(raw.replace(/PROP-?/i, ''));
   if (!num) return res.status(400).send('<h1>ID inválido</h1>');
-
   try {
     const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28' },
-      body: JSON.stringify({ filter: { property: 'N. Proposta', unique_id: { equals: num } } })
+      method:'POST', headers:{'Authorization':`Bearer ${TOKEN}`,'Content-Type':'application/json','Notion-Version':'2022-06-28'},
+      body: JSON.stringify({filter:{property:'N. Proposta',unique_id:{equals:num}}})
     });
     const data = await r.json();
-    if (!r.ok || !data.results?.length) return res.status(404).send('<h1>Proposta não encontrada</h1>');
+    if (!r.ok||!data.results?.length) return res.status(404).send('<h1>Proposta não encontrada</h1>');
 
-    const p    = data.results[0].properties;
-    const txt  = k => p[k]?.rich_text?.[0]?.text?.content || '';
-    const sel  = k => p[k]?.select?.name || '';
-    const ms   = k => (p[k]?.multi_select || []).map(o => o.name);
-    const num2 = k => p[k]?.number ?? null;
-    const uid  = p['N. Proposta']?.unique_id;
-    const propId   = uid?.number ? `PROP-${String(uid.number).padStart(3,'0')}` : '—';
-    const nome     = p['Nome']?.title?.[0]?.text?.content || '—';
-    const empresa  = txt('Empresa');
-    const clientDisplay = empresa || nome;
+    const p = data.results[0].properties;
+    const txt = k => esc(p[k]?.rich_text?.[0]?.text?.content||'');
+    const sel = k => esc(p[k]?.select?.name||'');
+    const ms = k => (p[k]?.multi_select||[]).map(o=>esc(o.name));
+    const num2 = k => p[k]?.number??null;
+    const uid = p['N. Proposta']?.unique_id;
+    const propId = uid?.number?`PROP-${String(uid.number).padStart(3,'0')}`:'—';
+    const nome = esc(p['Nome']?.title?.[0]?.text?.content||'—');
+    const empresa = txt('Empresa');
+    const clientDisplay = empresa||nome;
     const servicos = ms('Serviços');
-    const prazo    = sel('Prazo') || '—';
-    const estimativa = num2('Valor Final') || num2('Estimativa') || 0;
-    const antecipado = Math.round(estimativa * 0.90 / 50) * 50;
+    const prazo = sel('Prazo')||'—';
+    const estimativa = num2('Valor Final')||num2('Estimativa')||0;
+    const antecipado = Math.round(estimativa*0.90/50)*50;
     const fmt = n => n.toLocaleString('pt-BR');
     const today = new Date().toLocaleDateString('pt-BR');
-    const validDate = new Date(Date.now()+30*24*60*60*1000).toLocaleDateString('pt-BR');
-
-    // Title from brand/company
+    const validDate = new Date(Date.now()+30*864e5).toLocaleDateString('pt-BR');
+    const validLong = new Date(Date.now()+30*864e5).toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
     const heroWords = clientDisplay.trim().split(' ');
-    const heroA = heroWords.slice(0, -1).join(' ') || heroWords[0];
-    const heroB = heroWords.length > 1 ? heroWords[heroWords.length-1] : '';
+    const heroA = heroWords.slice(0,-1).join(' ')||heroWords[0];
+    const heroB = heroWords.length>1?heroWords[heroWords.length-1]:'';
+    const wa = msg => `https://wa.me/5511966488535?text=${encodeURIComponent(msg)}`;
 
-    const briefingUrl = `https://tochi-briefing.vercel.app/api/briefing?id=${propId}`;
-    const wa = (msg) => `https://wa.me/5511966488535?text=${encodeURIComponent(msg)}`;
-    const waSVG = `<svg style="width:15px;height:15px;fill:currentColor;flex-shrink:0" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>`;
-    const logoSVG = `<svg viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg"><polygon fill="#f5f5f0" points="363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03 363.46 380.03"/><path fill="#f5f5f0" d="M480.75,330.63c-6.71-6.9-17.33-10.34-31.88-10.34s-25.09,3.44-31.6,10.34c-6.51,6.89-9.76,18-9.76,33.31v351.54c0,15.32,3.35,26.53,10.05,33.61,6.7,7.09,17.32,10.62,31.88,10.62s25.08-3.63,31.59-10.91c6.51-7.27,9.77-18.38,9.77-33.32v-351.54c0-15.31-3.36-26.42-10.05-33.31ZM458.06,728.12h-17.81v-376.24h17.81v376.24Z"/><path fill="#f5f5f0" d="M597.06,528.23v-164.29c0-15.31-3.35-26.42-10.05-33.31-6.7-6.9-17.33-10.34-31.88-10.34s-25.08,3.44-31.59,10.34c-6.52,6.89-9.77,18-9.77,33.31v345.8c0,17.62,3.25,30.35,9.77,38.2,6.51,7.85,17.23,11.77,32.17,11.77s25.07-3.92,31.59-11.77c6.51-7.85,9.76-20.58,9.76-38.2v-111.44h-32.74v129.82h-17.8v-376.24h17.8v176.35h32.74Z"/><path fill="#f5f5f0" d="M652.78,377.75v-57.46h-32.74v436.55h32.74v-346.87h17.81v346.87h32.74v-379.13l-50.55.04Z"/><path fill="#f5f5f0" d="M732.04,377.73v379.11h32.75v-379.11h-32.75Z"/><path fill="red" d="M668.26,320.29v42.5h96.53v-42.5h-96.53Z"/></svg>`;
-
-    // Build deliverables
-    const formato  = sel('Formato');
-    const qtyH = num2('Qty H') || 0, qtyV = num2('Qty V') || 0;
+    // Deliverables
+    const formato = sel('Formato');
+    const qtyH = num2('Qty H')||0, qtyV = num2('Qty V')||0;
     const durH = sel('Duração H'), durV = sel('Duração V');
     const tiposMotion = ms('Tipos Motion');
-    const qtyMo = num2('Qty Motion') || 1;
+    const qtyMo = num2('Qty Motion')||1;
     const servicosIA = ms('Serviços IA');
+    const servicosEd = ms('Serviços Ed');
+    const complexMo = ms('Complexidade Mo');
 
-    let deliverables = '';
+    // Build scope cells
+    let scopeCells = '';
     if (servicos.includes('Edição de Vídeo')) {
-      const qty = formato === 'Ambos' ? `${qtyH}H + ${qtyV}V` : `${qtyH || qtyV || 1}`;
-      const dur = [durH, durV].filter(Boolean).join(' · ');
-      deliverables += `<div class="d-item"><div class="d-label">Vídeos</div><div class="d-val">${qty}</div><div class="d-sub">${formato||''}${dur?' · '+dur:''}</div></div>`;
+      const qty = formato==='Ambos'?`${qtyH}H + ${qtyV}V`:`${qtyH||qtyV||1}`;
+      const dur = [durH,durV].filter(Boolean).join(' · ');
+      scopeCells += `<div class="sc"><div class="sc-l">Entregável</div><div class="sc-v">${qty} Vídeo${(qtyH+qtyV)>1?'s':''}</div><div class="sc-s">${formato||''}${dur?' · '+dur:''}</div></div>`;
+      scopeCells += `<div class="sc"><div class="sc-l">Formato</div><div class="sc-v">${formato==='Horizontal'?'16:9':formato==='Vertical'?'9:16':'16:9 + 9:16'}</div><div class="sc-s">Full HD · H.264</div></div>`;
     }
     if (servicos.includes('Motion Design')) {
-      deliverables += `<div class="d-item"><div class="d-label">Motion</div><div class="d-val">${qtyMo}</div><div class="d-sub">${tiposMotion.slice(0,2).join(', ')}</div></div>`;
+      scopeCells += `<div class="sc"><div class="sc-l">Motion</div><div class="sc-v">${qtyMo} Entregável${qtyMo>1?'is':''}</div><div class="sc-s">${tiposMotion.slice(0,2).join(', ')}</div></div>`;
     }
-    if (servicos.includes('Produção com IA') && servicosIA.length) {
-      deliverables += `<div class="d-item"><div class="d-label">IA</div><div class="d-val red">${servicosIA.length}</div><div class="d-sub">${servicosIA.slice(0,2).join(', ')}</div></div>`;
-    }
-    const prazoRows = {'Urgente até 2 dias':'2 dias úteis','Padrão 10+ dias':'10–15 dias úteis','Sem urgência':'A combinar'};
-    deliverables += `<div class="d-item"><div class="d-label">Prazo</div><div class="d-val">${prazoRows[prazo]||prazo}</div><div class="d-sub">A partir do kick-off</div></div>`;
+    scopeCells += `<div class="sc"><div class="sc-l">Material</div><div class="sc-v red">Cliente</div><div class="sc-s">Footage bruta fornecida pelo cliente</div></div>`;
+    const prazoMap = {'Urgente até 2 dias':'2','Padrão 10+ dias':'10','Sem urgência':'—'};
+    scopeCells += `<div class="sc"><div class="sc-l">Prazo</div><div class="sc-v">${prazoMap[prazo]||'10'}</div><div class="sc-s">Dias úteis a partir do kick-off</div></div>`;
+    // Pad to even
+    const cellCount = (scopeCells.match(/class="sc"/g)||[]).length;
+    if (cellCount%2!==0) scopeCells += `<div class="sc"></div>`;
 
     // Services list
-    const svcEdMap = {Corte:'Corte',Color_Grade:'Color Grade',SFX:'SFX','Motion/Tipografia':'Motion / Tipografia',Legendas:'Legendas','Multi Câmera':'Multi Câmera'};
-    const servicosEd = ms('Serviços Ed');
     let svcRows = '';
-    if (servicos.includes('Edição de Vídeo')) {
-      svcRows += `<div class="svc-row"><div><div class="svc-name">Edição de Vídeo</div><div class="svc-desc">${servicosEd.join(', ') || 'Montagem criativa do material bruto'}</div></div><div class="svc-dot"></div></div>`;
-    }
-    if (servicos.includes('Motion Design')) {
-      const cx = ms('Complexidade Mo');
-      svcRows += `<div class="svc-row"><div><div class="svc-name">Motion Design</div><div class="svc-desc">${tiposMotion.join(', ')}${cx.length?' · '+cx.join(', '):''}</div></div><div class="svc-dot"></div></div>`;
-    }
-    if (servicos.includes('Produção com IA') && servicosIA.length) {
-      svcRows += `<div class="svc-row"><div><div class="svc-name">Produção com IA</div><div class="svc-desc">${servicosIA.join(', ')}</div></div><div class="svc-dot"></div></div>`;
-    }
+    if (servicos.includes('Edição de Vídeo')) svcRows += `<div class="svc-r"><div><div class="svc-n">Edição de Vídeo</div><div class="svc-d">${servicosEd.join(', ')||'Montagem criativa do material bruto'}</div></div><div class="dot"></div></div>`;
+    if (servicos.includes('Motion Design')) svcRows += `<div class="svc-r"><div><div class="svc-n">Motion Design</div><div class="svc-d">${tiposMotion.join(', ')}${complexMo.length?' · '+complexMo.join(', '):''}</div></div><div class="dot"></div></div>`;
+    if (servicos.includes('Produção com IA')&&servicosIA.length) svcRows += `<div class="svc-r"><div><div class="svc-n">Produção com IA</div><div class="svc-d">${servicosIA.join(', ')}</div></div><div class="dot"></div></div>`;
+
+    // Timeline days
+    const prazoD = prazoMap[prazo]||'10';
+    const reviewDay = prazoD==='2'?'1':Math.round(parseInt(prazoD)*0.7)||'7';
+
+    const LOGO = `<polygon fill="#f5f5f0" points="363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03"/><path fill="#f5f5f0" d="M480.75,330.63c-6.71-6.9-17.33-10.34-31.88-10.34s-25.09,3.44-31.6,10.34-9.76,18-9.76,33.31v351.54c0,15.32,3.35,26.53,10.05,33.61s17.32,10.62,31.88,10.62,25.08-3.63,31.59-10.91,9.77-18.38,9.77-33.32v-351.54c0-15.31-3.36-26.42-10.05-33.31ZM458.06,728.12h-17.81v-376.24h17.81v376.24Z"/><path fill="#f5f5f0" d="M597.06,528.23v-164.29c0-15.31-3.35-26.42-10.05-33.31s-17.33-10.34-31.88-10.34-25.08,3.44-31.59,10.34-9.77,18-9.77,33.31v345.8c0,17.62,3.25,30.35,9.77,38.2s17.23,11.77,32.17,11.77,25.07-3.92,31.59-11.77,9.76-20.58,9.76-38.2v-111.44h-32.74v129.82h-17.8v-376.24h17.8v176.35h32.74Z"/><path fill="#f5f5f0" d="M652.78,377.75v-57.46h-32.74v436.55h32.74v-346.87h17.81v346.87h32.74v-379.13l-50.55.04Z"/><path fill="#f5f5f0" d="M732.04,377.73v379.11h32.75v-379.11h-32.75Z"/><path fill="#e01010" d="M668.26,320.29v42.5h96.53v-42.5h-96.53Z"/>`;
 
     const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Tochi — Proposta ${propId} · ${clientDisplay}</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='315 320 450 437' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='800' height='800' fill='%230d0d0d'/%3E%3Cpolygon fill='%23f5f5f0' points='363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03 363.46 380.03'/%3E%3Cpath fill='red' d='M668.26,320.29v42.5h96.53v-42.5h-96.53Z'/%3E%3C/svg%3E">
-<meta property="og:type" content="website">
 <meta property="og:title" content="Proposta ${propId} · ${clientDisplay} — Tochi">
 <meta property="og:description" content="Proposta comercial de pós-produção. Válida até ${validDate}.">
-<!-- og:image será adicionado quando o banner estiver pronto -->
-<meta property="og:site_name" content="Tochi">
 <meta name="theme-color" content="#e01010">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-:root{--black:#0d0d0d;--white:#f5f5f0;--red:#e01010;--gray:#2a2a2a;--gray-mid:#444;--gray-light:#888;--green:#1a7a3c}
-body{background:var(--black);color:var(--white);font-family:'Barlow Condensed',sans-serif;min-height:100vh;overflow-x:hidden}
-.page{max-width:900px;margin:0 auto;padding:0 2rem 6rem}
-.print-btn{position:fixed;bottom:2rem;right:2rem;z-index:100;display:flex;align-items:center;gap:.5rem;background:var(--gray);border:1px solid #444;color:var(--gray-light);font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;padding:.6rem 1rem;cursor:pointer;transition:border-color .15s,color .15s}
-.print-btn:hover{border-color:var(--white);color:var(--white)}
-.print-btn svg{width:13px;height:13px;fill:currentColor}
-.brief-btn{position:fixed;bottom:2rem;left:2rem;z-index:100;display:flex;align-items:center;gap:.5rem;background:none;border:1px solid var(--gray);color:var(--gray-light);font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;padding:.6rem 1rem;cursor:pointer;text-decoration:none;transition:border-color .15s,color .15s}
-.brief-btn:hover{border-color:var(--white);color:var(--white)}
-@media print{.print-btn,.brief-btn{display:none!important}body{background:var(--black)!important}.page{padding:0 1.5rem 2rem;max-width:100%}.section,.price-block,.pix-block,.termos{page-break-inside:avoid}}
-header{display:flex;justify-content:space-between;align-items:center;padding:2rem 0;border-bottom:1px solid var(--gray)}
-.logo-lg{display:block;width:52px}
-.doc-meta{text-align:right;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--gray-light);line-height:1.8;letter-spacing:.04em}
-.doc-meta span{color:var(--white)}
-.hero{padding:5rem 0 4rem;border-bottom:1px solid var(--gray)}
-.label{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--red);margin-bottom:1rem;display:flex;align-items:center;gap:.6rem}
-.label::before{content:'';display:inline-block;width:18px;height:2px;background:var(--red);flex-shrink:0}
-.hero-title{font-size:clamp(3rem,8vw,6rem);font-weight:900;line-height:.92;letter-spacing:-.01em;text-transform:uppercase;margin-bottom:2rem}
-.hero-title em{font-style:normal;color:var(--red)}
-.client-tag{display:inline-flex;align-items:center;gap:.75rem;background:var(--gray);border:1px solid #333;padding:.5rem 1rem;font-size:.9rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-light)}
-.client-tag strong{color:var(--white)}
-.section{padding:4rem 0;border-bottom:1px solid var(--gray)}
-.sec-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2.5rem}
-.sec-title{font-size:.72rem;font-family:'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--gray-light)}
-.sec-num{font-size:.68rem;font-family:'DM Mono',monospace;color:#333;letter-spacing:.1em}
-.deliverables{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray);border:1px solid var(--gray)}
-.d-item{background:var(--black);padding:1.75rem 2rem;display:flex;flex-direction:column;gap:.4rem}
-.d-label{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-light)}
-.d-val{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;text-transform:uppercase}
-.d-val.red{color:var(--red)}
-.d-sub{font-size:.8rem;font-weight:400;color:var(--gray-light);text-transform:none}
-.svc-list{display:flex;flex-direction:column}
-.svc-row{display:flex;align-items:center;justify-content:space-between;padding:1.4rem 0;border-bottom:1px solid #1c1c1c;gap:1rem}
-.svc-row:last-child{border-bottom:none}
-.svc-name{font-size:1.4rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
-.svc-desc{font-size:.8rem;color:var(--gray-light);margin-top:.15rem;font-family:'DM Mono',monospace;letter-spacing:.03em}
-.svc-dot{width:10px;height:10px;background:var(--red);flex-shrink:0}
-.price-block{padding:4rem 0;border-bottom:1px solid var(--gray)}
-.price-main{display:flex;align-items:flex-end;gap:1rem;margin:2rem 0}
-.price-cur{font-size:2rem;font-weight:300;color:var(--gray-light);line-height:1;margin-bottom:.6rem}
-.price-val{font-size:clamp(5rem,12vw,8rem);font-weight:900;line-height:.9;letter-spacing:-.03em}
-.price-cts{font-size:2.5rem;font-weight:700;color:var(--gray-mid);line-height:1;margin-bottom:.5rem}
-.price-meta{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gray-light);letter-spacing:.06em;margin-bottom:2rem}
-.price-meta strong{color:var(--white)}
-.payment-opts{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray);border:1px solid var(--gray)}
-.p-opt{background:var(--black);padding:1.5rem 2rem;display:flex;flex-direction:column}
-.p-opt.feat{background:var(--red)}
-.p-opt.feat .p-lbl,.p-opt.feat .p-desc{color:rgba(255,255,255,.7)}
-.p-lbl{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light);margin-bottom:.5rem}
-.p-ttl{font-size:1.3rem;font-weight:800;text-transform:uppercase;letter-spacing:.02em;margin-bottom:.35rem}
-.p-desc{font-size:.78rem;color:var(--gray-light);font-family:'DM Mono',monospace;line-height:1.5}
-.badge{display:inline-block;font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.1em;padding:.2rem .5rem;margin-top:.6rem;margin-bottom:1.25rem}
-.bd-dark{background:var(--gray);color:var(--gray-light)}
-.bd-light{background:rgba(255,255,255,.15);color:#fff}
-.wa-btn{display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:auto;padding:.75rem 1rem;font-family:'Barlow Condensed',sans-serif;font-size:.85rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border:1px solid rgba(255,255,255,.2);color:var(--white);background:transparent;transition:background .15s}
-.wa-btn:hover{background:rgba(255,255,255,.1)}
-.pix-block{padding:4rem 0;border-bottom:1px solid var(--gray)}
-.pix-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray);border:1px solid var(--gray)}
-.pix-item{background:var(--black);padding:1.5rem 2rem;display:flex;flex-direction:column;gap:.35rem}
-.pix-item.full{grid-column:1/-1}
-.pix-sub{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--gray-light);letter-spacing:.1em;text-transform:uppercase}
-.pix-key{font-size:1.5rem;font-weight:800;color:var(--red)}
-.pix-val{font-family:'DM Mono',monospace;font-size:.78rem;color:var(--white);letter-spacing:.04em}
-.termos{padding:4rem 0;border-bottom:1px solid var(--gray)}
-.termos-list{display:flex;flex-direction:column}
-.t-item{display:flex;gap:2rem;padding:1.5rem 0;border-bottom:1px solid #1a1a1a}
-.t-item:last-child{border-bottom:none}
-.t-num{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--red);letter-spacing:.1em;min-width:2rem;padding-top:.1rem;flex-shrink:0}
-.t-txt{font-size:.88rem;color:var(--gray-light);line-height:1.65;font-family:'DM Mono',monospace;letter-spacing:.01em}
-.t-txt strong{color:var(--white);font-weight:500}
-.cta{padding:4rem 0;border-bottom:1px solid var(--gray);text-align:center}
-.cta-valid{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-light);margin-bottom:1.5rem}
-.cta-valid span{color:var(--red)}
-.cta-btn{display:inline-flex;align-items:center;justify-content:center;gap:.6rem;padding:1rem 2.5rem;font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;background:var(--red);color:var(--white);border:none;cursor:pointer;transition:opacity .15s}
-.cta-btn:hover{opacity:.88}
-footer{padding:4rem 0 0;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:2rem}
-.f-site{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gray-light);letter-spacing:.08em}
-.f-site span{color:var(--red)}
-.f-contact{text-align:right;font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gray-light);line-height:2;letter-spacing:.04em}
-.f-contact strong{color:var(--white);font-weight:500}
-.accent-bar{height:4px;background:var(--red);width:100%;margin-top:3rem}
-@media(max-width:620px){.deliverables,.payment-opts,.pix-grid{grid-template-columns:1fr}.hero-title{font-size:3rem}footer{flex-direction:column}.f-contact{text-align:left}}
-</style>
-</head>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,700;0,900;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}:root{--ink:#f5f5f0;--paper:#080808;--accent:#e01010;--glow:rgba(224,16,16,.5);--gs:rgba(224,16,16,.14);--gf:rgba(224,16,16,.06);--sf:rgba(245,245,240,.025);--sf2:rgba(245,245,240,.045);--bd:rgba(245,245,240,.06);--be:rgba(245,245,240,.11);--t1:#f5f5f0;--t2:rgba(245,245,240,.72);--t3:rgba(245,245,240,.48);--t4:rgba(245,245,240,.28);--green:#1a7a3c;--ff:'Barlow Condensed',sans-serif;--fm:'DM Mono',monospace;--ease:cubic-bezier(.16,1,.3,1);--ex:cubic-bezier(.19,1,.22,1)}html{scroll-behavior:smooth}body{background:var(--paper);color:var(--ink);font-family:var(--ff);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}body::after{content:'';position:fixed;inset:0;z-index:9998;pointer-events:none;opacity:.028;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:150px}.scroll-progress{position:fixed;top:0;left:0;height:2px;background:var(--accent);z-index:9999;width:0;box-shadow:0 0 12px var(--glow),0 0 4px var(--accent)}.orb{position:fixed;pointer-events:none;z-index:0;border-radius:50%;filter:blur(100px);opacity:.5}.orb-1{width:450px;height:350px;top:-100px;left:35%;background:radial-gradient(circle,rgba(224,16,16,.07),transparent 70%);animation:of 16s ease-in-out infinite alternate}.orb-2{width:280px;height:280px;bottom:10%;right:-50px;background:radial-gradient(circle,rgba(224,16,16,.035),transparent 70%);animation:of 20s ease-in-out infinite alternate-reverse}@keyframes of{0%{transform:translate(0,0) scale(1)}100%{transform:translate(15px,30px) scale(1.08)}}.page{max-width:840px;margin:0 auto;padding:0 2rem 6rem;position:relative;z-index:1}a{color:inherit;text-decoration:none}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.rv{opacity:0;transform:translateY(24px);transition:opacity .9s var(--ex),transform .9s var(--ex)}.rv.v{opacity:1;transform:none}.rv-s{opacity:0;transform:scale(.94);transition:opacity 1s var(--ex),transform 1s var(--ex)}.rv-s.v{opacity:1;transform:none}.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}.d5{transition-delay:.5s}@media(prefers-reduced-motion:reduce){.rv,.rv-s{opacity:1;transform:none;transition:none}}.svg-defs{position:absolute;width:0;height:0;overflow:hidden}.accepted-banner{display:none;width:100%;background:var(--green);padding:1.8rem 2rem;align-items:center;gap:1.5rem;position:relative;z-index:2}.accepted-banner.visible{display:flex}.ab-title{font-size:1.6rem;font-weight:900;text-transform:uppercase;color:#fff;line-height:1;margin-bottom:.2rem}.ab-sub{font-family:var(--fm);font-size:.68rem;color:rgba(255,255,255,.6)}.ab-stamp{font-family:var(--fm);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;border:1.5px solid rgba(255,255,255,.3);color:rgba(255,255,255,.75);padding:.4rem .8rem;margin-left:auto}.print-btn{position:fixed;bottom:1.5rem;right:1.5rem;z-index:100;display:flex;align-items:center;gap:.35rem;background:rgba(12,12,12,.88);backdrop-filter:blur(16px);border:1px solid var(--be);color:var(--t3);font-family:var(--fm);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:.45rem .7rem;cursor:pointer;transition:all .2s}.print-btn:hover{border-color:var(--t2);color:var(--t1)}.print-btn svg{width:11px;height:11px;fill:currentColor}.floating-cta{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(70px);z-index:99;display:flex;align-items:center;gap:.5rem;background:var(--accent);color:var(--ink);border:none;font-family:var(--ff);font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.55rem 1.3rem;cursor:pointer;box-shadow:0 0 28px var(--gs),0 0 60px rgba(224,16,16,.12);transition:transform .35s var(--ease),opacity .35s;opacity:0;animation:cb 4s ease-in-out infinite}@keyframes cb{0%,100%{box-shadow:0 0 28px var(--gs),0 0 60px rgba(224,16,16,.12)}50%{box-shadow:0 0 38px var(--gs),0 0 80px rgba(224,16,16,.18)}}.floating-cta.show{transform:translateX(-50%) translateY(0);opacity:1}.floating-cta:hover{opacity:.9}.floating-cta svg{width:12px;height:12px;fill:currentColor}@media print{.print-btn,.floating-cta,.wa-btn,.cta-wrap,.scroll-progress,.orb{display:none!important}body{background:var(--paper)!important}.page{padding:0 1rem 2rem;max-width:100%}[class*="rv"]{opacity:1!important;transform:none!important}section{page-break-inside:avoid}.accepted-banner.visible{display:flex!important}}header{display:flex;justify-content:space-between;align-items:center;padding:2rem 0 1.5rem}.logo{width:42px;display:block;transition:opacity .15s}.logo:hover{opacity:.65}.meta{text-align:right;font-family:var(--fm);font-size:.62rem;color:var(--t4);line-height:2;letter-spacing:.06em}.meta b{color:var(--t2);font-weight:500}.hero{padding:4.5rem 0 3.5rem;position:relative}.hero::after{content:'';position:absolute;bottom:0;left:-999px;right:-999px;height:1px;background:linear-gradient(90deg,transparent,var(--be) 20%,var(--be) 80%,transparent)}.tag{font-family:var(--fm);font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:var(--accent);margin-bottom:1.2rem;display:flex;align-items:center;gap:.8rem}.tag::before{content:'';width:28px;height:1px;background:linear-gradient(90deg,var(--accent),transparent)}.hero h1{font-size:clamp(3.2rem,8.5vw,6.5rem);font-weight:900;line-height:.86;letter-spacing:-.035em;text-transform:uppercase;margin-bottom:1.6rem}.hero h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 80px rgba(224,16,16,.14)}.badge{display:inline-flex;align-items:center;gap:.5rem;background:var(--sf);border:1px solid var(--bd);padding:.35rem .85rem;font-family:var(--fm);font-size:.65rem;color:var(--t4);backdrop-filter:blur(10px)}.badge b{color:var(--t1);font-weight:500}section{padding:3.2rem 0;position:relative}section::after{content:'';position:absolute;bottom:0;left:-999px;right:-999px;height:1px;background:linear-gradient(90deg,transparent,var(--be) 20%,var(--be) 80%,transparent)}.sh{display:flex;align-items:center;gap:.8rem;margin-bottom:2rem}.sh-n{font-family:var(--fm);font-size:7rem;font-weight:900;line-height:1;color:rgba(245,245,240,.025);position:absolute;right:0;top:1rem;pointer-events:none;user-select:none}.sh-num{font-family:var(--fm);font-size:.58rem;color:var(--accent);letter-spacing:.06em;width:1.4rem}.sh-t{font-family:var(--fm);font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--t4)}.sh-line{flex:1;height:1px;background:linear-gradient(90deg,var(--be),transparent 80%)}.scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd);margin-bottom:2rem}.sc{background:var(--paper);padding:1.4rem 1.6rem;display:flex;flex-direction:column;gap:2px;position:relative;overflow:hidden;transition:background .3s}.sc::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(224,16,16,.06),transparent 50%);opacity:0;transition:opacity .4s;pointer-events:none}.sc:hover{background:var(--sf)}.sc:hover::before{opacity:1}.sc-l{font-family:var(--fm);font-size:.56rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t4);position:relative}.sc-v{font-size:1.45rem;font-weight:900;letter-spacing:-.01em;text-transform:uppercase;position:relative}.sc-v.red{color:var(--accent);text-shadow:0 0 30px rgba(224,16,16,.06)}.sc-s{font-size:.74rem;font-weight:400;color:var(--t3);text-transform:none;position:relative}.svc{display:flex;flex-direction:column}.svc-r{display:flex;align-items:center;justify-content:space-between;padding:1rem 0;border-bottom:1px solid var(--bd);gap:1rem;transition:all .3s var(--ease)}.svc-r:last-child{border-bottom:none}.svc-r:hover{padding-left:10px;border-color:rgba(224,16,16,.06)}.svc-r:hover .dot{box-shadow:0 0 14px var(--glow);transform:scale(1.3)}.svc-n{font-size:1.15rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase}.svc-d{font-family:var(--fm);font-size:.66rem;color:var(--t3);margin-top:.05rem}.dot{width:6px;height:6px;background:var(--accent);flex-shrink:0;transition:all .3s var(--ease)}.tl{display:grid;grid-template-columns:repeat(3,1fr);position:relative;padding-top:.3rem}.tl::before{content:'';position:absolute;top:2rem;left:10px;right:10px;height:1px;background:var(--be)}.tl::after{content:'';position:absolute;top:2rem;left:10px;height:1px;width:0;background:linear-gradient(90deg,var(--accent),rgba(224,16,16,.3));box-shadow:0 0 8px rgba(224,16,16,.14);transition:width 1.2s var(--ex) .4s}.tl.v::after{width:calc(33.33% - 10px)}.tl-s{display:flex;flex-direction:column;position:relative;z-index:1}.tl-s:nth-child(2){align-items:center;text-align:center}.tl-s:last-child{align-items:flex-end;text-align:right}.tl-dot{width:16px;height:16px;border:1px solid var(--be);background:var(--paper);display:flex;align-items:center;justify-content:center;margin-bottom:1rem}.tl-dot::after{content:'';width:4px;height:4px;background:var(--t4);display:block}.tl-dot.on{border-color:var(--accent);box-shadow:0 0 18px rgba(224,16,16,.14)}.tl-dot.on::after{background:var(--accent);box-shadow:0 0 10px var(--glow)}.tl-st{font-size:1.05rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1;margin-bottom:.2rem}.tl-st.red{color:var(--accent);text-shadow:0 0 25px rgba(224,16,16,.06)}.tl-dy{font-family:var(--fm);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t4);margin-bottom:.2rem}.tl-i{font-family:var(--fm);font-size:.58rem;color:var(--t3);line-height:1.55}.price-wrap{position:relative;padding:2rem 0 1.5rem}.price-wrap::before{content:'';position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);width:350px;height:250px;background:radial-gradient(ellipse,rgba(224,16,16,.06),transparent 65%);pointer-events:none;animation:pg 5s ease-in-out infinite alternate}@keyframes pg{0%{opacity:.7;transform:translate(-50%,-50%) scale(1)}100%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}}.price-row{display:flex;align-items:flex-end;gap:.4rem;margin-bottom:.8rem;position:relative}.price-rs{font-size:1.3rem;font-weight:300;color:var(--t4);line-height:1;margin-bottom:.6rem}.price-num{font-size:clamp(5rem,14vw,9rem);font-weight:900;line-height:.78;letter-spacing:-.06em;position:relative;text-shadow:0 0 100px rgba(224,16,16,.14),0 0 200px rgba(224,16,16,.06)}.price-c{font-size:1.8rem;font-weight:700;color:rgba(245,245,240,.13);margin-bottom:.35rem;position:relative}.price-sub{font-family:var(--fm);font-size:.64rem;color:var(--t3);letter-spacing:.04em;margin-bottom:2.2rem;position:relative}.price-sub b{color:var(--t1);font-weight:500}.pay{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd)}.pay-c{background:var(--paper);padding:1.4rem 1.6rem;display:flex;flex-direction:column;gap:5px;transition:background .3s}.pay-c:hover{background:var(--sf)}.pay-c.feat{background:var(--accent);box-shadow:0 0 50px rgba(224,16,16,.14)}.pay-c.feat:hover{background:#c60e0e}.pay-c.feat .pay-l,.pay-c.feat .pay-d{color:rgba(255,255,255,.6)}.pay-c.feat .pay-b{background:rgba(255,255,255,.14);color:#fff}.pay-l{font-family:var(--fm);font-size:.56rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t4)}.pay-t{font-size:1.1rem;font-weight:900;text-transform:uppercase;letter-spacing:.02em}.pay-d{font-family:var(--fm);font-size:.68rem;color:var(--t3);line-height:1.5}.pay-b{display:inline-block;align-self:flex-start;font-family:var(--fm);font-size:.54rem;letter-spacing:.08em;padding:.18rem .45rem;margin-top:2px;background:var(--sf2);color:var(--t4)}.wa-btn{display:flex;align-items:center;justify-content:center;gap:.4rem;margin-top:auto;padding:.55rem .7rem;font-family:var(--ff);font-size:.76rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;border:1px solid rgba(255,255,255,.1);color:var(--ink);background:transparent;cursor:pointer;transition:all .2s}.wa-btn:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.22);box-shadow:0 0 16px rgba(255,255,255,.04)}.pay-c.feat .wa-btn{border-color:rgba(255,255,255,.28)}.pay-c.feat .wa-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.45)}.wa-btn svg{width:12px;height:12px;fill:currentColor}body.is-accepted .wa-btn{pointer-events:none;opacity:.12}.pix{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd)}.px{background:var(--paper);padding:1.3rem 1.6rem;display:flex;flex-direction:column;gap:.2rem}.px.w{grid-column:1/-1}.px-l{font-family:var(--fm);font-size:.54rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t4)}.px-v{font-family:var(--fm);font-size:.7rem;color:var(--t2)}.px-k{font-size:1.2rem;font-weight:900;color:var(--accent);text-shadow:0 0 25px rgba(224,16,16,.06);display:flex;align-items:center;gap:.6rem}.copy-btn{display:inline-flex;align-items:center;gap:.3rem;background:none;border:1px solid var(--be);color:var(--t4);font-family:var(--fm);font-size:.52rem;letter-spacing:.08em;text-transform:uppercase;padding:.25rem .5rem;cursor:pointer;transition:all .2s}.copy-btn:hover{border-color:var(--t3);color:var(--t2)}.copy-btn.copied{border-color:var(--accent);color:var(--accent)}.copy-btn svg{width:10px;height:10px;fill:currentColor}.terms{display:flex;flex-direction:column}.tr{display:flex;gap:1.2rem;padding:.9rem 0;border-bottom:1px solid var(--bd)}.tr:last-child{border-bottom:none}.tr-n{font-family:var(--fm);font-size:.58rem;color:var(--accent);letter-spacing:.1em;min-width:1.4rem}.tr-t{font-family:var(--fm);font-size:.68rem;color:var(--t3);line-height:1.65}.tr-t b{color:var(--t1);font-weight:500}.cta-wrap{padding:3.5rem 0 3rem;text-align:center;position:relative}.cta-wrap::before{content:'';position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:450px;height:220px;background:radial-gradient(ellipse,rgba(224,16,16,.06),transparent 60%);pointer-events:none}.cta-wrap::after{content:'';position:absolute;bottom:0;left:-999px;right:-999px;height:1px;background:linear-gradient(90deg,transparent,var(--be) 20%,var(--be) 80%,transparent)}.cta-lbl{font-family:var(--fm);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--t4);margin-bottom:1.3rem}.cta-lbl span{color:var(--accent)}.wa-cta{display:inline-flex;align-items:center;justify-content:center;gap:.6rem;padding:.8rem 2.2rem;font-family:var(--ff);font-size:.95rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--accent);color:var(--ink);border:none;cursor:pointer;box-shadow:0 0 30px var(--glow),0 0 80px rgba(224,16,16,.06);transition:transform .15s var(--ease),box-shadow .3s;animation:cb 4s ease-in-out infinite}.wa-cta:hover{transform:scale(1.04)}.wa-cta:active{transform:scale(.96)}.wa-cta svg{width:15px;height:15px;fill:currentColor}.cta-note{font-family:var(--fm);font-size:.58rem;color:var(--t4);margin-top:1rem;position:relative}body.is-accepted .wa-cta,.is-accepted .floating-cta{pointer-events:none;opacity:.12;animation:none}footer{padding:3rem 0 0;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1.5rem}.f-brand{display:flex;flex-direction:column;gap:.25rem}.f-logo{width:26px;display:block;transition:opacity .15s}.f-logo:hover{opacity:.65}.f-site{font-family:var(--fm);font-size:.62rem}.f-site a{color:var(--accent);transition:text-shadow .3s}.f-site a:hover{text-shadow:0 0 16px rgba(224,16,16,.06)}.f-contact{text-align:right;font-family:var(--fm);font-size:.62rem;color:var(--t4);line-height:2}.f-contact b{color:var(--t2);font-weight:500}.f-bar{height:2px;width:100%;margin-top:2rem;background:linear-gradient(90deg,transparent,var(--accent) 15%,var(--accent) 85%,transparent);box-shadow:0 0 16px var(--gs);position:relative;overflow:hidden}.f-bar::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);animation:shine 4s ease-in-out infinite}@keyframes shine{0%{left:-100%}50%,100%{left:200%}}body.is-accepted .f-bar{background:linear-gradient(90deg,transparent,var(--green) 15%,var(--green) 85%,transparent);box-shadow:0 0 16px rgba(26,122,60,.3)}@media(max-width:680px){.page{padding:0 1.4rem 5rem}.hero h1{font-size:clamp(2.6rem,12vw,3.8rem)}.scope-grid,.pay,.pix{grid-template-columns:1fr}.px.w{grid-column:1}header{flex-direction:column;align-items:flex-start;gap:.8rem}.meta{text-align:left}footer{flex-direction:column;align-items:flex-start}.f-contact{text-align:left}.tl{grid-template-columns:1fr;gap:1.8rem}.tl::before,.tl::after{display:none}.tl-s:nth-child(2),.tl-s:last-child{align-items:flex-start;text-align:left}.print-btn{display:none}.accepted-banner{padding:1.2rem;flex-wrap:wrap}.price-num{font-size:clamp(3.8rem,16vw,5.5rem)}.floating-cta{font-size:.72rem;padding:.5rem 1rem}.sh-n{font-size:4.5rem}.orb-1{width:300px;height:250px;left:20%}.orb-2{display:none}}</style></head>
 <body>
-<a class="brief-btn" href="${briefingUrl}" target="_blank">← Ver briefing original</a>
-<button class="print-btn" onclick="window.print()">
-  <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
-  Salvar PDF
-</button>
+<div class="scroll-progress" id="sp"></div><div class="orb orb-1"></div><div class="orb orb-2"></div>
+<svg class="svg-defs" aria-hidden="true"><defs><symbol id="wa" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></symbol><symbol id="pr" viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></symbol><symbol id="cp" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></symbol><symbol id="ck" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></symbol></defs></svg>
+<button class="print-btn" onclick="window.print()"><svg><use href="#pr"/></svg>PDF</button>
+<button class="floating-cta" id="fc" onclick="document.getElementById('cta').scrollIntoView({behavior:'smooth'})"><svg><use href="#wa"/></svg>Fechar proposta</button>
+<div class="accepted-banner" id="ab" role="status"><div><div class="ab-title">Proposta aceita</div><div class="ab-sub">Entraremos em contato em até 24h para alinhar o kick-off</div></div><div class="ab-stamp">✓ Fechado</div></div>
 <div class="page">
-  <header>
-    <svg class="logo-lg" viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg">${logoSVG.replace(/<svg[^>]*>/,'').replace('</svg>','')}</svg>
-    <div class="doc-meta">PROPOSTA COMERCIAL &nbsp;·&nbsp; <span>N.º ${propId}</span><br>DATA <span>${today}</span><br>VÁLIDA ATÉ <span>${validDate}</span></div>
-  </header>
-  <div class="hero">
-    <div class="label">Proposta para</div>
-    <h1 class="hero-title">${heroA}${heroB?`<br><em>${heroB}</em>`:''}</h1>
-    <div class="client-tag">Cliente &nbsp;<strong>${clientDisplay}${nome !== clientDisplay ? ' · '+nome : ''}</strong></div>
-  </div>
-  <div class="section">
-    <div class="sec-hdr"><span class="sec-title">Escopo do projeto</span><span class="sec-num">01</span></div>
-    <div class="deliverables">${deliverables}</div>
-  </div>
-  <div class="section">
-    <div class="sec-hdr"><span class="sec-title">O que está incluso</span><span class="sec-num">02</span></div>
-    <div class="svc-list">${svcRows}</div>
-  </div>
-  <div class="price-block">
-    <div class="sec-hdr"><span class="sec-title">Investimento</span><span class="sec-num">03</span></div>
-    <div class="price-main">
-      <div class="price-cur">R$</div>
-      <div class="price-val">${fmt(estimativa).replace(/,\d+$/,'')}</div>
-      <div class="price-cts">,00</div>
-    </div>
-    <div class="price-meta">Prazo: <strong>${prazoRows[prazo]||prazo}</strong></div>
-    <div class="payment-opts">
-      <div class="p-opt">
-        <div class="p-lbl">Padrão</div><div class="p-ttl">50% + 50%</div>
-        <div class="p-desc">R$${fmt(Math.round(estimativa/2))} na aprovação<br>R$${fmt(Math.round(estimativa/2))} na entrega</div>
-        <div class="badge bd-dark">SEM DESCONTO</div>
-        <a class="wa-btn" href="${wa(`Olá, quero aprovar a proposta ${propId} na opção 50%+50% (R$${fmt(estimativa)}).`)}" target="_blank">${waSVG} Aceitar esta opção</a>
-      </div>
-      <div class="p-opt feat">
-        <div class="p-lbl">Melhor opção</div><div class="p-ttl">100% Antecipado</div>
-        <div class="p-desc">R$${fmt(antecipado)} antes do início<br>10% de desconto aplicado</div>
-        <div class="badge bd-light">— 10% · ECONOMIA R$${fmt(estimativa-antecipado)}</div>
-        <a class="wa-btn" href="${wa(`Olá, quero aprovar a proposta ${propId} na opção 100% antecipado (R$${fmt(antecipado)}).`)}" target="_blank">${waSVG} Aceitar esta opção</a>
-      </div>
-    </div>
-  </div>
-  <div class="pix-block">
-    <div class="sec-hdr"><span class="sec-title">Dados para pagamento</span><span class="sec-num">04</span></div>
-    <div class="pix-grid">
-      <div class="pix-item full"><div class="pix-sub">Chave Pix</div><div class="pix-key">eduardo@tochi.com.br</div></div>
-      <div class="pix-item"><div class="pix-sub">Banco</div><div class="pix-val">Inter · 077</div></div>
-      <div class="pix-item"><div class="pix-sub">Favorecido</div><div class="pix-val">Eduardo Bertochi</div></div>
-      <div class="pix-item"><div class="pix-sub">Agência / Conta</div><div class="pix-val">0001 · 465832938</div></div>
-      <div class="pix-item"><div class="pix-sub">CNPJ</div><div class="pix-val">42.219.966/0001-64</div></div>
-    </div>
-  </div>
-  <div class="termos">
-    <div class="sec-hdr"><span class="sec-title">Condições gerais</span><span class="sec-num">05</span></div>
-    <div class="termos-list">
-      <div class="t-item"><div class="t-num">01</div><div class="t-txt">O prazo começa a contar a partir do <strong>recebimento integral do material bruto</strong> e da confirmação de pagamento da primeira parcela.</div></div>
-      <div class="t-item"><div class="t-num">02</div><div class="t-txt">Estão incluídas <strong>2 rodadas de revisão</strong>. Revisões adicionais ou mudanças de escopo serão cobradas separadamente.</div></div>
-      <div class="t-item"><div class="t-num">03</div><div class="t-txt">Em caso de cancelamento após o início, serão cobrados os custos já incorridos, com valor mínimo de <strong>30% do total aprovado</strong>.</div></div>
-      <div class="t-item"><div class="t-num">04</div><div class="t-txt">A aprovação formal desta proposta, por e-mail ou mensagem, <strong>caracteriza aceite integral</strong> das condições aqui descritas.</div></div>
-    </div>
-  </div>
-  <div class="cta">
-    <div class="cta-valid">Válida até <span>${validDate}</span></div>
-    <a class="cta-btn" href="${wa(`Olá, quero fechar a proposta ${propId}.`)}" target="_blank">${waSVG} Fechar proposta via WhatsApp</a>
-  </div>
-  <footer>
-    <div><div class="f-site"><a href="https://tochi.com.br" target="_blank" style="color:inherit;text-decoration:none"><span>tochi</span>.com.br</a></div></div>
-    <div class="f-contact"><strong>Eduardo Bertochi</strong><br>eduardo@tochi.com.br</div>
-  </footer>
-  <div class="accent-bar"></div>
+  <header class="rv"><a href="https://tochi.com.br" target="_blank" rel="noopener"><svg class="logo" viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg"><title>Tochi</title>${LOGO}</svg></a><div class="meta">PROPOSTA · <b>N.º ${propId.replace('PROP-','')}</b><br>DATA <b>${today}</b><br>VÁLIDA <b>${validDate}</b></div></header>
+  <div class="hero"><div class="tag rv">Proposta para</div><h1 class="rv d1">${heroA}<em>${heroB}</em></h1><div class="badge rv d2">Cliente <b>${clientDisplay}</b></div></div>
+  <section><div class="sh-n rv">01</div><div class="sh rv"><span class="sh-num">01</span><span class="sh-t">Escopo</span><span class="sh-line"></span></div><div class="scope-grid rv d1">${scopeCells}</div><div class="svc rv d2">${svcRows}</div></section>
+  <section><div class="sh-n rv">02</div><div class="sh rv"><span class="sh-num">02</span><span class="sh-t">Cronograma</span><span class="sh-line"></span></div><div class="tl rv d1"><div class="tl-s"><div class="tl-dot on"></div><div class="tl-st red">Kick-off</div><div class="tl-dy">Dia 1</div><div class="tl-i">Recebimento do material<br>bruto + 1ª parcela</div></div><div class="tl-s"><div class="tl-dot"></div><div class="tl-st">Review</div><div class="tl-dy">Dia ${reviewDay}</div><div class="tl-i">1ª versão entregue<br>para aprovação</div></div><div class="tl-s"><div class="tl-dot"></div><div class="tl-st">Entrega</div><div class="tl-dy">Dia ${prazoD}</div><div class="tl-i">Versão final aprovada<br>e arquivos exportados</div></div></div></section>
+  <section><div class="sh-n rv">03</div><div class="sh rv"><span class="sh-num">03</span><span class="sh-t">Investimento</span><span class="sh-line"></span></div><div class="price-wrap rv-s"><div class="price-row"><div class="price-rs">R$</div><div class="price-num" id="pn" data-target="${estimativa}">0</div><div class="price-c">,00</div></div><div class="price-sub">Entrega em <b>${prazoD} dias úteis</b> a partir do kick-off</div></div><div class="pay rv d2"><div class="pay-c"><div class="pay-l">Padrão</div><div class="pay-t">50% + 50%</div><div class="pay-d">R$${fmt(Math.round(estimativa/2))} na aprovação<br>R$${fmt(Math.round(estimativa/2))} na entrega</div><div class="pay-b">SEM DESCONTO</div><a class="wa-btn" href="${wa(`Olá, quero aprovar a proposta ${propId} na opção 50%+50% (R$${fmt(estimativa)}).`)}" target="_blank" rel="noopener"><svg><use href="#wa"/></svg>Aceitar</a></div><div class="pay-c feat"><div class="pay-l">Melhor opção</div><div class="pay-t">100% Antecipado</div><div class="pay-d">R$${fmt(antecipado)} antes do início<br>10% de desconto</div><div class="pay-b">— 10% · ECONOMIA R$${fmt(estimativa - antecipado)}</div><a class="wa-btn" href="${wa(`Olá, quero aprovar a proposta ${propId} na opção 100% antecipado (R$${fmt(antecipado)}).`)}" target="_blank" rel="noopener"><svg><use href="#wa"/></svg>Aceitar</a></div></div></section>
+  <section><div class="sh-n rv">04</div><div class="sh rv"><span class="sh-num">04</span><span class="sh-t">Pagamento</span><span class="sh-line"></span></div><div class="pix rv d1"><div class="px w"><div class="px-l">Chave Pix</div><div class="px-k">eduardo@tochi.com.br <button class="copy-btn" id="cpx"><svg><use href="#cp"/></svg>Copiar</button></div></div><div class="px"><div class="px-l">Banco</div><div class="px-v">Inter · 077</div></div><div class="px"><div class="px-l">Favorecido</div><div class="px-v">Eduardo Bertochi</div></div><div class="px"><div class="px-l">Agência / Conta</div><div class="px-v">0001 · 465832938</div></div><div class="px"><div class="px-l">CNPJ</div><div class="px-v">42.219.966/0001-64</div></div></div></section>
+  <section><div class="sh-n rv">05</div><div class="sh rv"><span class="sh-num">05</span><span class="sh-t">Condições gerais</span><span class="sh-line"></span></div><div class="terms rv d1"><div class="tr"><div class="tr-n">01</div><div class="tr-t">O prazo começa a contar a partir do <b>recebimento integral do material bruto</b> e da confirmação de pagamento da primeira parcela.</div></div><div class="tr"><div class="tr-n">02</div><div class="tr-t">Estão incluídas <b>2 rodadas de revisão</b> sobre o vídeo final. Revisões adicionais ou mudanças de escopo serão cobradas separadamente.</div></div><div class="tr"><div class="tr-n">03</div><div class="tr-t">Em caso de cancelamento após o início, serão cobrados os custos já incorridos, com valor mínimo de <b>30% do total aprovado</b>.</div></div><div class="tr"><div class="tr-n">04</div><div class="tr-t">A aprovação formal desta proposta, por e-mail ou mensagem, <b>caracteriza aceite integral</b> das condições aqui descritas.</div></div></div></section>
+  <div class="cta-wrap rv-s" id="cta"><div class="cta-lbl">Válida até <span>${validLong}</span></div><a class="wa-cta" href="${wa(`Olá, quero fechar a proposta ${propId}.`)}" target="_blank" rel="noopener"><svg><use href="#wa"/></svg>Fechar proposta via WhatsApp</a><div class="cta-note">Respondemos em até 24h</div></div>
+  <footer class="rv"><div class="f-brand"><a href="https://tochi.com.br" target="_blank" rel="noopener"><svg class="f-logo" viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${LOGO}</svg></a><div class="f-site"><a href="https://tochi.com.br" target="_blank">tochi.com.br</a></div></div><div class="f-contact"><b>Eduardo Bertochi</b><br>eduardo@tochi.com.br</div></footer><div class="f-bar"></div>
 </div>
-</body>
-</html>`;
+<script>
+!function(){var b=document.getElementById('sp');window.addEventListener('scroll',function(){var h=document.documentElement;b.style.width=h.scrollTop/(h.scrollHeight-h.clientHeight)*100+'%'},{passive:true})}();
+!function(){var els=document.querySelectorAll('.rv,.rv-s,.tl');if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){els.forEach(function(e){e.classList.add('v')});return}var io=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('v');io.unobserve(e.target)}})},{threshold:.1,rootMargin:'0px 0px -50px 0px'});els.forEach(function(e){io.observe(e)})}();
+!function(){var el=document.getElementById('pn');if(!el)return;var t=parseInt(el.dataset.target)||0,c=false;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting&&!c){c=true;io.unobserve(el);var d=1200,s=null;function step(ts){if(!s)s=ts;var p=Math.min((ts-s)/d,1);el.textContent=Math.round((1-Math.pow(1-p,4))*t).toLocaleString('pt-BR');if(p<1)requestAnimationFrame(step)}requestAnimationFrame(step)}})},{threshold:.3});io.observe(el)}();
+!function(){var b=document.getElementById('fc'),c=document.getElementById('cta');if(!b||!c)return;var on=false;window.addEventListener('scroll',function(){var s=window.scrollY>350,nb=c.getBoundingClientRect().top<window.innerHeight+60;var v=s&&!nb;if(v!==on){on=v;b.classList.toggle('show',on)}},{passive:true})}();
+!function(){var b=document.getElementById('cpx');if(!b)return;b.addEventListener('click',function(){navigator.clipboard.writeText('eduardo@tochi.com.br').then(function(){b.classList.add('copied');b.innerHTML='<svg><use href="#ck"/></svg>Copiado';setTimeout(function(){b.classList.remove('copied');b.innerHTML='<svg><use href="#cp"/></svg>Copiar'},2e3)})})}();
+!function(){var p=new URLSearchParams(location.search);if(p.get('status')==='aprovado'){document.body.classList.add('is-accepted');document.getElementById('ab').classList.add('visible');var f=document.getElementById('fc');if(f)f.style.display='none'}}();
+</script></body></html>`;
 
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Type','text/html; charset=utf-8');
+    res.setHeader('Cache-Control','no-store');
     return res.status(200).send(html);
-
-  } catch (err) {
-    return res.status(500).send(`<h1>Erro: ${err.message}</h1>`);
-  }
+  } catch(err){return res.status(500).send(`<h1>Erro: ${err.message}</h1>`)}
 }

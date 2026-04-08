@@ -1,175 +1,77 @@
 const DB_ID = 'c8e898644f7043e2b440f495b28bac46';
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 const STAGES = [
-  { key: '🆕 Novo',             label: 'Briefing recebido',    desc: 'Seu briefing foi recebido e está na fila de análise.' },
-  { key: '🔍 Em análise',       label: 'Em análise',           desc: 'Estamos analisando seu briefing para preparar o orçamento.' },
-  { key: '📄 Proposta enviada', label: 'Proposta enviada',     desc: 'O orçamento foi preparado e enviado para você.' },
-  { key: '✅ Aprovado',         label: 'Projeto aprovado',     desc: 'Projeto aprovado! Em breve entraremos em contato para o kick-off.' },
-  { key: '🎬 Em produção',      label: 'Em produção',          desc: 'O projeto está sendo produzido pela equipe Tochi.' },
-  { key: '📦 Entregue',         label: 'Entregue',             desc: 'Projeto concluído e entregue. Obrigado pela confiança!' },
+  {key:'🆕 Novo',label:'Briefing recebido',desc:'Seu briefing foi recebido e está na fila de análise.'},
+  {key:'🔍 Em análise',label:'Em análise',desc:'Estamos analisando seu briefing para preparar o orçamento.'},
+  {key:'📄 Proposta enviada',label:'Proposta enviada',desc:'O orçamento foi preparado e enviado para você.'},
+  {key:'✅ Aprovado',label:'Projeto aprovado',desc:'Projeto aprovado! Em breve entraremos em contato para o kick-off.'},
+  {key:'🎬 Em produção',label:'Em produção',desc:'O projeto está sendo produzido pela equipe Tochi.'},
+  {key:'👁 Review',label:'Review',desc:'Primeira versão entregue para sua aprovação.'},
+  {key:'🔄 Revisão',label:'Revisão',desc:'Ajustes finais a partir do seu feedback.'},
+  {key:'📦 Entregue',label:'Entrega final',desc:'Arquivos finais exportados e entregues. Obrigado pela confiança!'},
 ];
 
 export default async function handler(req, res) {
   const TOKEN = process.env.NOTION_TOKEN;
-  const raw   = req.query.id || '';
-  const num   = parseInt(raw.replace(/PROP-?/i, ''));
+  const raw = req.query.id||'';
+  const num = parseInt(raw.replace(/PROP-?/i,''));
   if (!num) return res.status(400).send('<h1>ID inválido</h1>');
-
   try {
-    const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28' },
-      body: JSON.stringify({ filter: { property: 'N. Proposta', unique_id: { equals: num } } })
-    });
+    const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`,{method:'POST',headers:{'Authorization':`Bearer ${TOKEN}`,'Content-Type':'application/json','Notion-Version':'2022-06-28'},body:JSON.stringify({filter:{property:'N. Proposta',unique_id:{equals:num}}})});
     const data = await r.json();
-    if (!r.ok || !data.results?.length) return res.status(404).send('<h1>Projeto não encontrado</h1>');
+    if (!r.ok||!data.results?.length) return res.status(404).send('<h1>Projeto não encontrado</h1>');
 
-    const p     = data.results[0].properties;
-    const uid   = p['N. Proposta']?.unique_id;
-    const propId= uid?.number ? `PROP-${String(uid.number).padStart(3,'0')}` : '—';
-    const nome  = p['Nome']?.title?.[0]?.text?.content || '—';
-    const empresa = p['Empresa']?.rich_text?.[0]?.text?.content || '';
-    const clientDisplay = empresa || nome;
-    const status= p['Status']?.select?.name || '🆕 Novo';
-    const servicos = (p['Serviços']?.multi_select || []).map(o => o.name).join(' · ') || '—';
-    const prazo = p['Prazo']?.select?.name || '—';
-    const isCancelled = status === '❌ Cancelado';
+    const p = data.results[0].properties;
+    const propId = p['N. Proposta']?.unique_id?.number?`PROP-${String(p['N. Proposta'].unique_id.number).padStart(3,'0')}`:'—';
+    const nome = esc(p['Nome']?.title?.[0]?.text?.content||'—');
+    const empresa = esc(p['Empresa']?.rich_text?.[0]?.text?.content||'');
+    const cd = empresa||nome;
+    const status = p['Status']?.select?.name||'🆕 Novo';
+    const servicos = (p['Serviços']?.multi_select||[]).map(o=>esc(o.name)).join(' · ')||'—';
+    const prazo = p['Prazo']?.select?.name||'—';
+    const isCancelled = status==='❌ Cancelado';
+    const isDone = status==='📦 Entregue';
+    const curIdx = STAGES.findIndex(s=>s.key===status);
+    const si = curIdx>=0?curIdx:0;
+    const stage = STAGES[si]||STAGES[0];
+    const pct = isCancelled?0:isDone?100:Math.round((si/(STAGES.length-1))*100);
+    const prazoMap = {'Urgente até 2 dias':'Urgente (2 dias)','Padrão 10+ dias':'Padrão (10–15 dias)','Sem urgência':'Sem urgência'};
+    const heroWords = cd.trim().split(' ');
+    const heroA = heroWords.slice(0,-1).join(' ')||heroWords[0];
+    const heroB = heroWords.length>1?heroWords[heroWords.length-1]:'';
+    const theme = isCancelled?'gray':isDone?'green':'red';
 
-    const curIdx = STAGES.findIndex(s => s.key === status);
-    const stageIdx = curIdx >= 0 ? curIdx : 0;
-    const stage = STAGES[stageIdx] || STAGES[0];
-    const pct = isCancelled ? 100 : Math.round((stageIdx / (STAGES.length - 1)) * 100);
-
-    const prazoMap = {'Urgente até 2 dias':'Urgente (2 dias)', 'Padrão 10+ dias':'Padrão (10–15 dias)', 'Sem urgência':'Sem urgência definida'};
-
-    const stepsHTML = STAGES.map((s, i) => {
-      const done    = !isCancelled && i <= stageIdx;
-      const current = !isCancelled && i === stageIdx;
-      return `
-      <div class="step ${done ? 'done' : ''} ${current ? 'current' : ''}">
-        <div class="step-dot">
-          ${done && !current ? `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>` : ''}
-          ${current ? `<div class="step-pulse"></div>` : ''}
-        </div>
-        <div class="step-body">
-          <div class="step-label">${s.label}</div>
-          ${current ? `<div class="step-desc">${s.desc}</div>` : ''}
-        </div>
-      </div>`;
+    const stepsHTML = STAGES.map((s,i)=>{
+      const done = !isCancelled&&i<=si;
+      const cur = !isCancelled&&i===si;
+      const dotCls = isCancelled?'cancelled':done?(cur?'current':'done'):'pending';
+      const nameCls = done?(cur?'current':'done'):(isCancelled?'cancelled':'pending');
+      return `<div class="step rv d${Math.min(i+1,6)}"><div class="step-dot ${dotCls}"></div><div class="step-body"><div class="step-name ${nameCls}">${s.label}</div>${cur?`<div class="step-desc">${s.desc}</div>`:''}</div></div>`;
     }).join('');
 
-    const logoSVG = `<svg viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg"><polygon fill="#f5f5f0" points="363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03 363.46 380.03"/><path fill="#f5f5f0" d="M480.75,330.63c-6.71-6.9-17.33-10.34-31.88-10.34s-25.09,3.44-31.6,10.34c-6.51,6.89-9.76,18-9.76,33.31v351.54c0,15.32,3.35,26.53,10.05,33.61,6.7,7.09,17.32,10.62,31.88,10.62s25.08-3.63,31.59-10.91c6.51-7.27,9.77-18.38,9.77-33.32v-351.54c0-15.31-3.36-26.42-10.05-33.31ZM458.06,728.12h-17.81v-376.24h17.81v376.24Z"/><path fill="#f5f5f0" d="M597.06,528.23v-164.29c0-15.31-3.35-26.42-10.05-33.31-6.7-6.9-17.33-10.34-31.88-10.34s-25.08,3.44-31.59,10.34c-6.52,6.89-9.77,18-9.77,33.31v345.8c0,17.62,3.25,30.35,9.77,38.2,6.51,7.85,17.23,11.77,32.17,11.77s25.07-3.92,31.59-11.77c6.51-7.85,9.76-20.58,9.76-38.2v-111.44h-32.74v129.82h-17.8v-376.24h17.8v176.35h32.74Z"/><path fill="#f5f5f0" d="M652.78,377.75v-57.46h-32.74v436.55h32.74v-346.87h17.81v346.87h32.74v-379.13l-50.55.04Z"/><path fill="#f5f5f0" d="M732.04,377.73v379.11h32.75v-379.11h-32.75Z"/><path fill="red" d="M668.26,320.29v42.5h96.53v-42.5h-96.53Z"/></svg>`;
+    const LOGO = `<polygon fill="#f5f5f0" points="363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03"/><path fill="#f5f5f0" d="M480.75,330.63c-6.71-6.9-17.33-10.34-31.88-10.34s-25.09,3.44-31.6,10.34-9.76,18-9.76,33.31v351.54c0,15.32,3.35,26.53,10.05,33.61s17.32,10.62,31.88,10.62,25.08-3.63,31.59-10.91,9.77-18.38,9.77-33.32v-351.54c0-15.31-3.36-26.42-10.05-33.31ZM458.06,728.12h-17.81v-376.24h17.81v376.24Z"/><path fill="#f5f5f0" d="M597.06,528.23v-164.29c0-15.31-3.35-26.42-10.05-33.31s-17.33-10.34-31.88-10.34-25.08,3.44-31.59,10.34-9.77,18-9.77,33.31v345.8c0,17.62,3.25,30.35,9.77,38.2s17.23,11.77,32.17,11.77,25.07-3.92,31.59-11.77,9.76-20.58,9.76-38.2v-111.44h-32.74v129.82h-17.8v-376.24h17.8v176.35h32.74Z"/><path fill="#f5f5f0" d="M652.78,377.75v-57.46h-32.74v436.55h32.74v-346.87h17.81v346.87h32.74v-379.13l-50.55.04Z"/><path fill="#f5f5f0" d="M732.04,377.73v379.11h32.75v-379.11h-32.75Z"/><path fill="#e01010" d="M668.26,320.29v42.5h96.53v-42.5h-96.53Z"/>`;
+    const accentCSS = theme==='green'?'--accent:#1a7a3c;--glow:rgba(26,122,60,.4);--gs:rgba(26,122,60,.14);--gf:rgba(26,122,60,.06)':theme==='gray'?'--accent:#888;--glow:rgba(136,136,136,.3);--gs:rgba(136,136,136,.1);--gf:rgba(136,136,136,.04)':'--accent:#e01010;--glow:rgba(224,16,16,.5);--gs:rgba(224,16,16,.14);--gf:rgba(224,16,16,.06)';
 
-    const accentColor = isCancelled ? '#888' : stageIdx >= 5 ? '#1a7a3c' : '#e01010';
-
-    const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tochi — Status ${propId}</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='315 320 450 437' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='800' height='800' fill='%230d0d0d'/%3E%3Cpolygon fill='%23f5f5f0' points='363.46 380.03 363.46 723.53 390.46 723.53 390.46 756.84 330.72 756.84 330.72 380.03 315.21 380.03 315.21 348.43 330.72 348.43 330.72 320.29 363.46 320.29 363.46 348.43 390.46 348.43 390.46 380.03 363.46 380.03'/%3E%3Cpath fill='red' d='M668.26,320.29v42.5h96.53v-42.5h-96.53Z'/%3E%3C/svg%3E">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Status do projeto ${propId} · ${clientDisplay}">
-<meta property="og:description" content="Acompanhe o andamento do seu projeto de pós-produção com a Tochi.">
-<!-- og:image será adicionado quando o banner estiver pronto -->
-<meta property="og:site_name" content="Tochi">
-<meta name="theme-color" content="${accentColor}">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--black:#0d0d0d;--white:#f5f5f0;--red:${accentColor};--gray:#2a2a2a;--gray-light:#888}
-body{background:var(--black);color:var(--white);font-family:'Barlow Condensed',sans-serif;min-height:100vh}
-.page{max-width:640px;margin:0 auto;padding:0 2rem 6rem}
-header{display:flex;justify-content:space-between;align-items:center;padding:2rem 0;border-bottom:1px solid var(--gray)}
-.logo{width:40px}
-.doc-meta{text-align:right;font-family:'DM Mono',monospace;font-size:.7rem;color:var(--gray-light);line-height:1.8;letter-spacing:.04em}
-.doc-meta span{color:var(--white)}
-.hero{padding:4rem 0 3rem;border-bottom:1px solid var(--gray)}
-.label{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--red);margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
-.label::before{content:'';display:inline-block;width:14px;height:2px;background:var(--red);flex-shrink:0}
-.hero-title{font-size:clamp(2.5rem,6vw,4.5rem);font-weight:900;line-height:.9;letter-spacing:-.02em;text-transform:uppercase;margin-bottom:1.5rem}
-.hero-title em{font-style:normal;color:var(--red)}
-.meta-row{display:flex;gap:2rem;flex-wrap:wrap;margin-top:1.5rem}
-.meta-item{display:flex;flex-direction:column;gap:.25rem}
-.meta-lbl{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-light)}
-.meta-val{font-size:.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.progress-section{padding:3rem 0;border-bottom:1px solid var(--gray)}
-.progress-label{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light);margin-bottom:1.5rem;display:flex;justify-content:space-between}
-.progress-bar{height:3px;background:#1a1a1a;position:relative;margin-bottom:3rem}
-.progress-fill{height:100%;background:var(--red);width:${pct}%;transition:width 1s ease}
-.steps{display:flex;flex-direction:column;gap:0}
-.step{display:flex;gap:1.25rem;padding:1.1rem 0;border-bottom:1px solid #111;align-items:flex-start}
-.step:last-child{border-bottom:none}
-.step-dot{width:20px;height:20px;border:1px solid #333;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;margin-top:.15rem}
-.step.done .step-dot{border-color:var(--red);background:var(--red)}
-.step.done .step-dot svg{width:12px;height:12px;fill:#fff}
-.step.current .step-dot{border-color:var(--red)}
-.step-pulse{width:8px;height:8px;background:var(--red);animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
-.step-body{flex:1}
-.step-label{font-size:1rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-light)}
-.step.done .step-label,.step.current .step-label{color:var(--white)}
-.step-desc{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--gray-light);letter-spacing:.04em;line-height:1.6;margin-top:.35rem}
-${isCancelled ? `.cancel-notice{padding:2rem;background:#1a1a1a;border:1px solid #333;border-left:3px solid #888;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--gray-light);letter-spacing:.04em;line-height:1.65;margin:2rem 0}` : ''}
-.contact{padding:3rem 0}
-.contact-title{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-light);margin-bottom:1rem}
-.contact-body{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--gray-light);line-height:1.8}
-.contact-body a{color:var(--red);text-decoration:none}
-footer{border-top:1px solid var(--gray);padding:2rem 0 0;display:flex;justify-content:space-between;align-items:center}
-.f-site{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--gray-light);letter-spacing:.06em}
-.f-site span{color:var(--red)}
-.accent-bar{height:3px;background:var(--red);width:100%;margin-top:2rem}
-</style>
-</head>
-<body>
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Tochi — Status ${propId}</title><meta name="theme-color" content="${theme==='green'?'#1a7a3c':theme==='gray'?'#888':'#e01010'}"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,700;0,900;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}:root{--ink:#f5f5f0;--paper:#080808;${accentCSS};--sf:rgba(245,245,240,.025);--bd:rgba(245,245,240,.06);--be:rgba(245,245,240,.11);--t1:#f5f5f0;--t2:rgba(245,245,240,.72);--t3:rgba(245,245,240,.48);--t4:rgba(245,245,240,.28);--ff:'Barlow Condensed',sans-serif;--fm:'DM Mono',monospace;--ex:cubic-bezier(.19,1,.22,1)}html{scroll-behavior:smooth}body{background:var(--paper);color:var(--ink);font-family:var(--ff);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}body::after{content:'';position:fixed;inset:0;z-index:9998;pointer-events:none;opacity:.028;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:150px}.scroll-progress{position:fixed;top:0;left:0;height:2px;background:var(--accent);z-index:9999;width:0;box-shadow:0 0 12px var(--glow)}.orb{position:fixed;pointer-events:none;z-index:0;border-radius:50%;filter:blur(100px);opacity:.5;width:450px;height:350px;top:-100px;left:35%;background:radial-gradient(circle,currentColor,transparent 70%);color:var(--gf);animation:od 16s ease-in-out infinite alternate}@keyframes od{0%{transform:translate(0,0) scale(1)}100%{transform:translate(15px,30px) scale(1.08)}}.page{max-width:700px;margin:0 auto;padding:0 2rem 5rem;position:relative;z-index:1}a{color:inherit;text-decoration:none}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.rv{opacity:0;transform:translateY(24px);transition:opacity .9s var(--ex),transform .9s var(--ex)}.rv.v{opacity:1;transform:none}.d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}.d4{transition-delay:.32s}.d5{transition-delay:.4s}.d6{transition-delay:.48s}@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}header{display:flex;justify-content:space-between;align-items:center;padding:2rem 0 1.5rem}.logo{width:40px;display:block;transition:opacity .15s}.logo:hover{opacity:.65}.meta{text-align:right;font-family:var(--fm);font-size:.62rem;color:var(--t4);line-height:2;letter-spacing:.06em}.meta b{color:var(--t2);font-weight:500}.hero{padding:3.5rem 0 3rem;position:relative}.hero::after{content:'';position:absolute;bottom:0;left:-999px;right:-999px;height:1px;background:linear-gradient(90deg,transparent,var(--be) 20%,var(--be) 80%,transparent)}.tag{font-family:var(--fm);font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:.8rem}.tag::before{content:'';width:28px;height:1px;background:linear-gradient(90deg,var(--accent),transparent)}.hero h1{font-size:clamp(2.6rem,7vw,4.5rem);font-weight:900;line-height:.88;letter-spacing:-.03em;text-transform:uppercase;margin-bottom:1.4rem}.hero h1 em{font-style:normal;color:var(--accent);text-shadow:0 0 60px var(--gs)}.info-row{display:flex;gap:2rem;flex-wrap:wrap}.info-item{display:flex;flex-direction:column;gap:1px}.info-l{font-family:var(--fm);font-size:.54rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t4)}.info-v{font-family:var(--fm);font-size:.72rem;color:var(--t2)}.progress-section{padding:3rem 0;position:relative}.progress-section::after{content:'';position:absolute;bottom:0;left:-999px;right:-999px;height:1px;background:linear-gradient(90deg,transparent,var(--be) 20%,var(--be) 80%,transparent)}.pct-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.6rem}.pct-label{font-family:var(--fm);font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--t3)}.pct-num{font-size:clamp(2rem,5vw,3rem);font-weight:900;letter-spacing:-.03em;color:var(--accent);text-shadow:0 0 40px var(--gs)}.bar-track{width:100%;height:3px;background:var(--bd);margin-bottom:2.5rem;overflow:hidden}.bar-fill{height:100%;width:0;background:var(--accent);box-shadow:0 0 12px var(--glow);transition:width 1.4s var(--ex) .3s}.steps{display:flex;flex-direction:column}.step{display:flex;align-items:flex-start;gap:1.2rem;padding:1rem 0;position:relative}.step::before{content:'';position:absolute;left:8px;top:28px;bottom:-1rem;width:1px;background:var(--bd)}.step:last-child::before{display:none}.step-dot{width:17px;height:17px;border:1px solid var(--be);background:var(--paper);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;position:relative;z-index:1;transition:all .5s}.step-dot::after{content:'';width:5px;height:5px;display:block;transition:all .5s}.step-dot.done{border-color:var(--accent)}.step-dot.done::after{background:var(--accent)}.step-dot.current{border-color:var(--accent);box-shadow:0 0 18px var(--gs);animation:pd 2.5s ease-in-out infinite}.step-dot.current::after{background:var(--accent);box-shadow:0 0 8px var(--glow)}@keyframes pd{0%,100%{box-shadow:0 0 18px var(--gs)}50%{box-shadow:0 0 28px var(--glow)}}.step-dot.pending{border-color:var(--bd)}.step-dot.pending::after{background:rgba(245,245,240,.06)}.step-dot.cancelled{border-color:#555}.step-dot.cancelled::after{background:#555}.step-name{font-size:1rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1.1;margin-bottom:.15rem}.step-name.done{color:var(--t2)}.step-name.current{color:var(--t1)}.step-name.pending{color:var(--t4)}.step-name.cancelled{color:#666}.step-desc{font-family:var(--fm);font-size:.64rem;color:var(--t3);line-height:1.55}${isCancelled?`.cancel-box{padding:1.5rem;background:var(--sf);border:1px solid var(--bd);border-left:2px solid #888;font-family:var(--fm);font-size:.68rem;color:var(--t3);line-height:1.65;margin-top:1.5rem}`:''}.contact{padding:3rem 0;position:relative}.contact::after{content:'';position:absolute;bottom:0;left:-999px;right:-999px;height:1px;background:linear-gradient(90deg,transparent,var(--be) 20%,var(--be) 80%,transparent)}.contact-t{font-family:var(--fm);font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--t4);margin-bottom:1rem}.contact-body{font-family:var(--fm);font-size:.7rem;color:var(--t3);line-height:2}.contact-body a{color:var(--accent);transition:text-shadow .3s}.contact-body a:hover{text-shadow:0 0 12px var(--gf)}footer{padding:2.5rem 0 0;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1.5rem}.f-brand{display:flex;flex-direction:column;gap:.25rem}.f-logo{width:24px;display:block;transition:opacity .15s}.f-logo:hover{opacity:.65}.f-site{font-family:var(--fm);font-size:.62rem}.f-site a{color:var(--accent);transition:text-shadow .3s}.f-site a:hover{text-shadow:0 0 16px var(--gf)}.f-id{font-family:var(--fm);font-size:.58rem;color:var(--t4)}.f-bar{height:2px;width:100%;margin-top:2rem;background:linear-gradient(90deg,transparent,var(--accent) 15%,var(--accent) 85%,transparent);box-shadow:0 0 16px var(--gs);position:relative;overflow:hidden}.f-bar::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);animation:shine 4s ease-in-out infinite}@keyframes shine{0%{left:-100%}50%,100%{left:200%}}@media(max-width:680px){.page{padding:0 1.4rem 4rem}.hero h1{font-size:clamp(2.2rem,10vw,3rem)}header{flex-direction:column;align-items:flex-start;gap:.8rem}.meta{text-align:left}footer{flex-direction:column;align-items:flex-start}.info-row{gap:1.2rem}.orb{width:280px;height:220px;left:15%}}</style></head>
+<body><div class="scroll-progress" id="sp"></div><div class="orb"></div>
 <div class="page">
-  <header>
-    <svg class="logo" viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg">${logoSVG.replace(/<svg[^>]*>/,'').replace('</svg>','')}</svg>
-    <div class="doc-meta">STATUS DO PROJETO &nbsp;·&nbsp; <span>${propId}</span></div>
-  </header>
-
-  <div class="hero">
-    <div class="label">Acompanhamento</div>
-    <h1 class="hero-title">${clientDisplay.split(' ')[0]}<br><em>${clientDisplay.split(' ').slice(1).join(' ') || '&nbsp;'}</em></h1>
-    <div class="meta-row">
-      <div class="meta-item"><div class="meta-lbl">Serviços</div><div class="meta-val">${servicos}</div></div>
-      <div class="meta-item"><div class="meta-lbl">Prazo</div><div class="meta-val">${prazoMap[prazo]||prazo}</div></div>
-    </div>
-  </div>
-
-  <div class="progress-section">
-    <div class="progress-label">
-      <span>${isCancelled ? '❌ Projeto cancelado' : stage.label}</span>
-      <span>${isCancelled ? '' : `${pct}%`}</span>
-    </div>
-    ${!isCancelled ? `<div class="progress-bar"><div class="progress-fill"></div></div>` : ''}
-    ${isCancelled ? `<div class="cancel-notice">Este projeto foi cancelado. Entre em contato pelo WhatsApp ou e-mail caso tenha dúvidas ou queira retomar.</div>` : ''}
-    <div class="steps">${stepsHTML}</div>
-  </div>
-
-  <div class="contact">
-    <div class="contact-title">Precisa de ajuda?</div>
-    <div class="contact-body">
-      Entre em contato pelo WhatsApp ou e-mail.<br>
-      <a href="https://wa.me/5511966488535" target="_blank">WhatsApp → +55 11 96648-8535</a><br>
-      <a href="mailto:eduardo@tochi.com.br">eduardo@tochi.com.br</a>
-    </div>
-  </div>
-
-  <footer>
-    <div class="f-site"><a href="https://tochi.com.br" style="color:inherit;text-decoration:none"><span>tochi</span>.com.br</a></div>
-    <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:#333;letter-spacing:.06em">${propId}</div>
-  </footer>
-  <div class="accent-bar"></div>
+  <header class="rv"><a href="https://tochi.com.br" target="_blank" rel="noopener"><svg class="logo" viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg"><title>Tochi</title>${LOGO}</svg></a><div class="meta">STATUS · <b>${propId}</b></div></header>
+  <div class="hero"><div class="tag rv">Acompanhamento</div><h1 class="rv d1">${heroA}<br><em>${heroB}</em></h1><div class="info-row rv d2"><div class="info-item"><div class="info-l">Serviços</div><div class="info-v">${servicos}</div></div><div class="info-item"><div class="info-l">Prazo</div><div class="info-v">${prazoMap[prazo]||prazo}</div></div></div></div>
+  <div class="progress-section"><div class="pct-row rv"><div class="pct-label">${isCancelled?'Projeto cancelado':stage.label}</div><div class="pct-num" id="pn" data-target="${pct}">${isCancelled?'—':'0%'}</div></div>${!isCancelled?`<div class="bar-track rv d1"><div class="bar-fill" id="bf" data-width="${pct}"></div></div>`:''}${isCancelled?`<div class="cancel-box rv d1">Este projeto foi cancelado. Entre em contato pelo WhatsApp ou e-mail caso tenha dúvidas ou queira retomar.</div>`:''}<div class="steps">${stepsHTML}</div></div>
+  <div class="contact rv"><div class="contact-t">Precisa de ajuda?</div><div class="contact-body">Entre em contato pelo WhatsApp ou e-mail.<br><a href="https://wa.me/5511966488535" target="_blank">WhatsApp → +55 11 96648-8535</a><br><a href="mailto:eduardo@tochi.com.br">eduardo@tochi.com.br</a></div></div>
+  <footer class="rv"><div class="f-brand"><a href="https://tochi.com.br" target="_blank" rel="noopener"><svg class="f-logo" viewBox="315 320 450 437" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${LOGO}</svg></a><div class="f-site"><a href="https://tochi.com.br" target="_blank">tochi.com.br</a></div></div><div class="f-id">${propId}</div></footer><div class="f-bar"></div>
 </div>
-</body>
-</html>`;
+<script>
+!function(){var b=document.getElementById('sp');window.addEventListener('scroll',function(){var h=document.documentElement;b.style.width=h.scrollTop/(h.scrollHeight-h.clientHeight)*100+'%'},{passive:true})}();
+!function(){var els=document.querySelectorAll('.rv');if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){els.forEach(function(e){e.classList.add('v')});return}var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('v');io.unobserve(e.target)}})},{threshold:.1,rootMargin:'0px 0px -50px 0px'});els.forEach(function(e){io.observe(e)})}();
+${!isCancelled?`!function(){var el=document.getElementById('pn');if(!el)return;var t=${pct},c=false;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting&&!c){c=true;io.unobserve(el);var d=1e3,s=null;function step(ts){if(!s)s=ts;var p=Math.min((ts-s)/d,1);el.textContent=Math.round((1-Math.pow(1-p,3))*t)+'%';if(p<1)requestAnimationFrame(step)}requestAnimationFrame(step)}})},{threshold:.3});io.observe(el)}();
+!function(){var b=document.getElementById('bf');if(!b)return;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){b.style.width=b.dataset.width+'%';io.unobserve(b)}})},{threshold:.3});io.observe(b)}();`:''}
+</script></body></html>`;
 
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Type','text/html; charset=utf-8');
+    res.setHeader('Cache-Control','no-store');
     return res.status(200).send(html);
-
-  } catch (err) {
-    return res.status(500).send(`<h1>Erro: ${err.message}</h1>`);
-  }
+  } catch(err){return res.status(500).send(`<h1>Erro: ${err.message}</h1>`)}
 }

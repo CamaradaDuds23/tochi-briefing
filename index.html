@@ -462,55 +462,139 @@ function showDet(){
   document.getElementById('detI').classList.toggle('show',S.svcs.includes('ia'));
 }
 
-function calcEst(){
-  var base=0;
+var _propId=null;
+
+function getChipTexts(container,selector){
+  var chips=container?container.querySelectorAll(selector||'.chip.on'):[];
+  return Array.from(chips).map(function(c){return c.textContent.trim()});
+}
+
+function collectData(){
+  var qH=0,qV=0;
   if(S.svcs.includes('edicao')){
-    var qH=0,qV=0;
-    if(S.fmt==='h')qH=parseInt(document.getElementById('qA')?.textContent)||1;
-    else if(S.fmt==='v')qV=parseInt(document.getElementById('qA')?.textContent)||1;
-    else if(S.fmt==='both'){qH=parseInt(document.getElementById('qH')?.textContent)||1;qV=parseInt(document.getElementById('qV')?.textContent)||1}
-    // Horizontal pricing by duration
-    var durHEl=document.querySelector('[data-durh].on');
-    var hPrice=500;
-    if(durHEl){var dt=durHEl.textContent;if(dt.includes('1 min'))hPrice=400;else if(dt.includes('3 min'))hPrice=450;else if(dt.includes('5 min')&&!dt.includes('+'))hPrice=500;else hPrice=550}
-    // Vertical pricing
-    var durVEl=document.querySelector('[data-durv].on');
-    var vPrice=220;
-    if(durVEl){var dv=durVEl.textContent;if(dv.includes('30s'))vPrice=200;else if(dv.includes('1min30'))vPrice=400;else if(dv.includes('3 min'))vPrice=400;else vPrice=220}
-    // Check motion/tipo chip
-    var hasMotion=false;document.getElementById('detE')?.querySelectorAll('.chip.on').forEach(function(c){if(c.textContent.includes('Motion'))hasMotion=true});
-    if(hasMotion){hPrice=Math.max(hPrice,800);vPrice=Math.max(vPrice,400)}
-    base+=qH*hPrice+qV*vPrice;
-    // Volume discount
-    var totalVids=qH+qV;
-    if(totalVids>=3&&totalVids<=5)base=Math.round(base*.9);
-    else if(totalVids>=6&&totalVids<=10)base=Math.round(base*.85);
-    else if(totalVids>10)base=Math.round(base*.8);
+    if(S.fmt==='both'){qH=parseInt(document.getElementById('qH')?.textContent)||1;qV=parseInt(document.getElementById('qV')?.textContent)||1}
+    else if(S.fmt==='h'){qH=parseInt(document.getElementById('qA')?.textContent)||1}
+    else if(S.fmt==='v'){qV=parseInt(document.getElementById('qA')?.textContent)||1}
   }
-  if(S.svcs.includes('motion')){
-    var qM=parseInt(document.getElementById('qM')?.textContent)||1;
-    var durMo=document.querySelector('[data-dmo].on');
-    var mPrice=1200;
-    if(durMo){var dm=durMo.textContent;if(dm.includes('5 min'))mPrice=2200;else if(dm.includes('10'))mPrice=4000}
-    // Complexity
-    var hasZero=false,has3d=false;
-    document.getElementById('detM')?.querySelectorAll('.chip.on').forEach(function(c){
-      if(c.textContent.includes('Criação do zero'))hasZero=true;
-      if(c.textContent.includes('3D'))has3d=true;
+  var durHEl=document.querySelector('[data-durh].on');
+  var durVEl=document.querySelector('[data-durv].on');
+  var detE=document.getElementById('detE');
+  var detM=document.getElementById('detM');
+  var detI=document.getElementById('detI');
+  // Collect edit services (6th field inside detE)
+  var edSvcs=[],edMat=[];
+  if(detE){
+    var fields=detE.querySelectorAll('.field');
+    if(fields[4])edSvcs=getChipTexts(fields[4]);
+    if(fields[5])edMat=getChipTexts(fields[5]);
+  }
+  var moTypes=[],moCompl=[],moAssets=[];
+  if(detM){
+    var mf=detM.querySelectorAll('.field');
+    if(mf[0])moTypes=getChipTexts(mf[0]);
+    if(mf[2])moCompl=getChipTexts(mf[2]);
+    if(mf[4])moAssets=getChipTexts(mf[4]);
+  }
+  var iaSvcs=[];
+  if(detI){var iaf=detI.querySelectorAll('.field');if(iaf[0])iaSvcs=getChipTexts(iaf[0])}
+  var refs=Array.from(document.querySelectorAll('#linkList input')).map(function(i){return i.value.trim()}).filter(Boolean);
+  var origemEl=document.querySelector('#origemChips .chip.on');
+  return {
+    nome:document.getElementById('fNome').value.trim(),
+    empresa:document.getElementById('fEmpresa').value.trim(),
+    whatsapp:(document.getElementById('fDDI').value+' '+document.getElementById('fWhats').value).trim(),
+    email:document.getElementById('fEmail').value.trim(),
+    descricao:document.getElementById('fDesc')?.value?.trim()||'',
+    briefingLink:document.getElementById('fBriefLink')?.value?.trim()||'',
+    services:S.svcs,
+    edicao:S.svcs.includes('edicao')?{formato:S.fmt,qtyH:qH,qtyV:qV,durH:durHEl?.textContent?.trim()||'',durV:durVEl?.textContent?.trim()||'',servicos:edSvcs,material:edMat,obs:detE?.querySelector('textarea')?.value?.trim()||''}:null,
+    motion:S.svcs.includes('motion')?{tipos:moTypes,duracao:document.querySelector('[data-dmo].on')?.textContent?.trim()||'',complexidade:moCompl,qty:parseInt(document.getElementById('qM')?.textContent)||1,assets:moAssets,obs:detM?.querySelector('textarea')?.value?.trim()||''}:null,
+    ia:S.svcs.includes('ia')?{svcs:iaSvcs,minVideo:parseInt(document.getElementById('qIV')?.textContent)||0,minAudio:parseInt(document.getElementById('qIN')?.textContent)||0,storyboard:parseInt(document.getElementById('qIS')?.textContent)||0,obs:detI?.querySelector('textarea')?.value?.trim()||''}:null,
+    prazo:document.querySelector('#prazoC .chip.on')?.dataset?.prazo||'',
+    referencias:refs,
+    obs:document.getElementById('fObs')?.value?.trim()||'',
+    origem:origemEl?.textContent?.trim()||''
+  };
+}
+
+function calcEst(d){
+  var total=0;
+  if(d.edicao){
+    var qH=d.edicao.qtyH,qV=d.edicao.qtyV;
+    if(qH>0){var dur=d.edicao.durH;var hp=dur.includes('5 min+')? 550:dur.includes('5 min')? 500:dur.includes('3')? 450:400;total+=qH*hp}
+    if(qV>0){total+=qV*220}
+    var tv=qH+qV;
+    if(tv>=11)total=Math.round(total*.8);else if(tv>=6)total=Math.round(total*.85);else if(tv>=3)total=Math.round(total*.9);
+  }
+  if(d.motion&&d.motion.tipos.length){
+    var mb=0;
+    d.motion.tipos.forEach(function(t){if(t.includes('Logo'))mb+=800;if(t.includes('Vinheta'))mb+=1000;if(t.includes('Elementos'))mb+=600;if(t.includes('Full Motion')){var dur=d.motion.duracao;mb+=dur.includes('5')?2000:dur.includes('10')?3500:1200}});
+    var h3d=d.motion.complexidade.some(function(c){return c.includes('3D')});
+    var hzero=d.motion.complexidade.some(function(c){return c.includes('Criação')});
+    if(h3d)mb=Math.round(mb*1.75);else if(hzero)mb=Math.round(mb*1.3);
+    if(!mb)mb=800;
+    total+=mb*(d.motion.qty||1);
+  }
+  if(d.ia&&d.ia.svcs.length){
+    d.ia.svcs.forEach(function(s){
+      if(s.includes('vídeo do zero'))total+=800*(d.ia.minVideo||1);
+      if(s.includes('imagem base'))total+=500*(d.ia.minVideo||1);
+      if(s.includes('narração'))total+=150*(d.ia.minAudio||1);
+      if(s.includes('personagem')&&!s.includes('Animação'))total+=1200;
+      if(s.includes('Animação'))total+=900;
+      if(s.includes('Storyboard'))total+=100*(d.ia.storyboard||1);
     });
-    if(has3d)mPrice=Math.round(mPrice*1.75);
-    else if(hasZero)mPrice=Math.round(mPrice*1.3);
-    base+=qM*mPrice;
   }
-  if(S.svcs.includes('ia')){
-    var vMin=parseInt(document.getElementById('qIV')?.textContent)||0;
-    var nMin=parseInt(document.getElementById('qIN')?.textContent)||0;
-    var sScr=parseInt(document.getElementById('qIS')?.textContent)||0;
-    base+=vMin*800+nMin*150+sScr*100;
+  if(d.prazo==='urgente')total=Math.round(total*1.4);
+  if(total===0)total=400;
+  var r=function(n){return Math.round(n/50)*50};
+  return {base:r(total),min:r(total*.85),max:r(total*1.15)};
+}
+
+async function sendToNotion(d,est){
+  var DB='c8e898644f7043e2b440f495b28bac46';
+  var prazoMap={urgente:'Urgente até 2 dias',padrao:'Padrão 10+ dias',sem:'Sem urgência'};
+  var fmtMap={h:'Horizontal',v:'Vertical',both:'Ambos'};
+  var svcNames={edicao:'Edição de Vídeo',motion:'Motion Design',ia:'Produção com IA'};
+  var txt=function(v){return{rich_text:[{text:{content:v||''}}]}};
+  var msF=function(arr){return{multi_select:arr.filter(Boolean).map(function(n){return{name:n}})}};
+  var body={parent:{database_id:DB},properties:{
+    'Nome':{title:[{text:{content:d.nome}}]},
+    'Empresa':txt(d.empresa),'WhatsApp':{phone_number:d.whatsapp},'Email':{email:d.email},
+    'Serviços':msF(d.services.map(function(s){return svcNames[s]})),
+    'Descrição':txt(d.descricao),'Estimativa':{number:est.base},
+    'Referências':txt(d.referencias.join('\n')),'Observações':txt(d.obs)
+  }};
+  if(d.briefingLink)body.properties['Brief Link']={url:d.briefingLink};
+  if(d.prazo)body.properties['Prazo']={select:{name:prazoMap[d.prazo]||d.prazo}};
+  if(d.edicao){
+    body.properties['Formato']={select:{name:fmtMap[d.edicao.formato]||d.edicao.formato}};
+    body.properties['Qty H']={number:d.edicao.qtyH||0};
+    body.properties['Qty V']={number:d.edicao.qtyV||0};
+    if(d.edicao.durH)body.properties['Duração H']={select:{name:d.edicao.durH}};
+    if(d.edicao.durV)body.properties['Duração V']={select:{name:d.edicao.durV}};
+    body.properties['Serviços Ed']=msF(d.edicao.servicos);
+    body.properties['Material Ed']=msF(d.edicao.material);
+    body.properties['Obs Edição']=txt(d.edicao.obs);
   }
-  var prazoEl=document.querySelector('#prazoC .chip.on');
-  if(prazoEl&&prazoEl.dataset.prazo==='urgente')base=Math.round(base*1.4);
-  return Math.round(base/50)*50;
+  if(d.motion){
+    body.properties['Tipos Motion']=msF(d.motion.tipos);
+    if(d.motion.duracao)body.properties['Duração Motion']={select:{name:d.motion.duracao}};
+    body.properties['Complexidade Mo']=msF(d.motion.complexidade);
+    body.properties['Qty Motion']={number:d.motion.qty||1};
+    body.properties['Assets Mo']=msF(d.motion.assets);
+    body.properties['Obs Motion']=txt(d.motion.obs);
+  }
+  if(d.ia&&d.ia.svcs.length){
+    body.properties['Serviços IA']=msF(d.ia.svcs);
+    body.properties['Obs IA']=txt(d.ia.obs);
+    if(d.ia.minVideo)body.properties['Qty Min Vídeo']={number:d.ia.minVideo};
+    if(d.ia.minAudio)body.properties['Qty Min Áudio']={number:d.ia.minAudio};
+  }
+  var res=await fetch('/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,origem:d.origem})});
+  if(!res.ok){var e=await res.json();throw new Error(e.error||'Erro ao enviar')}
+  var result=await res.json();
+  _propId=result.propId||null;
 }
 
 function doSubmit(){
@@ -536,7 +620,7 @@ function doSubmit(){
     '<div class="sum-c"><div class="sum-l">Empresa</div><div class="sum-v">'+(empresa||'—')+'</div></div>'+
     '<div class="sum-c"><div class="sum-l">Prazo</div><div class="sum-v">'+prazo+'</div></div>'+
     '<div class="sum-c"><div class="sum-l">Serviços</div><div class="sum-v">'+(svcNames||'—')+'</div></div>'+
-    (S.fmt?'<div class="sum-c"><div class="sum-l">Formato</div><div class="sum-v">'+(fmtMap[S.fmt]||'—')+'</div></div>':'')+
+    
     (desc?'<div class="sum-c w"><div class="sum-l">Descrição</div><div class="sum-v">'+desc.substring(0,200)+(desc.length>200?'…':'')+'</div></div>':'');
 
   var low=Math.round(est*0.85/50)*50, high=Math.round(est*1.15/50)*50;

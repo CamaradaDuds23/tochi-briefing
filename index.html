@@ -597,62 +597,57 @@ async function sendToNotion(d,est){
   _propId=result.propId||null;
 }
 
-function doSubmit(){
-  var est=calcEst();
+async function doSubmit(){
+  var d=collectData();
+  var est=calcEst(d);
+
   document.querySelectorAll('.step').forEach(function(s){s.classList.remove('active')});
   document.getElementById('navBar').style.display='none';
   document.getElementById('heroBlock').style.display='none';
   document.querySelector('.prog').style.display='none';
   document.querySelector('.step-ind').style.display='none';
   document.getElementById('confirmScreen').classList.add('active');
-  document.getElementById('btnStatus').style.display='inline-flex';
-  document.getElementById('statusInline').style.display='block';
 
-  var nome=document.getElementById('fNome').value,empresa=document.getElementById('fEmpresa').value,desc=document.getElementById('fDesc')?.value||'';
   var svcMap={edicao:'Edição de Vídeo',motion:'Motion Design',ia:'Produção com IA'};
   var svcNames=S.svcs.map(function(s){return svcMap[s]}).join(' · ');
-  var prazoEl=document.querySelector('#prazoC .chip.on');
-  var prazo=prazoEl?prazoEl.textContent.split('·')[0].trim():'—';
-  var fmtMap={h:'Horizontal',v:'Vertical',both:'Ambos'};
+  var prazoLabels={urgente:'Urgente',padrao:'Padrão',sem:'Sem urgência'};
 
   document.getElementById('sumGrid').innerHTML=
-    '<div class="sum-c"><div class="sum-l">Cliente</div><div class="sum-v">'+(nome||'—')+'</div></div>'+
-    '<div class="sum-c"><div class="sum-l">Empresa</div><div class="sum-v">'+(empresa||'—')+'</div></div>'+
-    '<div class="sum-c"><div class="sum-l">Prazo</div><div class="sum-v">'+prazo+'</div></div>'+
+    '<div class="sum-c"><div class="sum-l">Cliente</div><div class="sum-v">'+(d.nome||'—')+'</div></div>'+
+    '<div class="sum-c"><div class="sum-l">Empresa</div><div class="sum-v">'+(d.empresa||'—')+'</div></div>'+
+    '<div class="sum-c"><div class="sum-l">Prazo</div><div class="sum-v">'+(prazoLabels[d.prazo]||'—')+'</div></div>'+
     '<div class="sum-c"><div class="sum-l">Serviços</div><div class="sum-v">'+(svcNames||'—')+'</div></div>'+
-    
-    (desc?'<div class="sum-c w"><div class="sum-l">Descrição</div><div class="sum-v">'+desc.substring(0,200)+(desc.length>200?'…':'')+'</div></div>':'');
+    (d.descricao?'<div class="sum-c w"><div class="sum-l">Descrição</div><div class="sum-v">'+d.descricao.substring(0,200)+(d.descricao.length>200?'…':'')+'</div></div>':'');
 
-  var low=Math.round(est*0.85/50)*50, high=Math.round(est*1.15/50)*50;
-  if(low<50)low=50;
+  var cells=document.querySelectorAll('#sumGrid .sum-c');
+  var nw=0;cells.forEach(function(c){if(!c.classList.contains('w'))nw++});
+  if(nw%2!==0){for(var i=cells.length-1;i>=0;i--){if(!cells[i].classList.contains('w')){cells[i].classList.add('span');break}}}
+
   var elL=document.getElementById('estLow'),elH=document.getElementById('estHigh'),dur=1200,t0=null;
   function step(ts){if(!t0)t0=ts;var p=Math.min((ts-t0)/dur,1);var ease=1-Math.pow(1-p,4);
-  elL.textContent=Math.round(ease*low).toLocaleString('pt-BR');
-  elH.textContent=Math.round(ease*high).toLocaleString('pt-BR');
+  elL.textContent=Math.round(ease*est.min).toLocaleString('pt-BR');
+  elH.textContent=Math.round(ease*est.max).toLocaleString('pt-BR');
   if(p<1)requestAnimationFrame(step)}
   requestAnimationFrame(step);
 
-  // Fix grid: if odd number of cells, make last one span full width
-  var cells=document.querySelectorAll('#sumGrid .sum-c');
-  var nonWide=0;cells.forEach(function(c){if(!c.classList.contains('w'))nonWide++});
-  if(nonWide%2!==0){
-    // Find last non-wide cell and make it span
-    for(var i=cells.length-1;i>=0;i--){if(!cells[i].classList.contains('w')){cells[i].classList.add('span');break}}
-  }
+  window.scrollTo({top:0,behavior:'smooth'});
 
+  try{
+    await sendToNotion(d,est);
+    if(_propId){
+      document.getElementById('btnStatus').href='/api/status?id='+_propId;
+      document.getElementById('btnStatusInline').href='/api/status?id='+_propId;
+      document.getElementById('btnProp').onclick=function(){window.open('/api/proposal?id='+_propId+'&staff=tochi','_blank')};
+    }
+  }catch(err){console.error('Submit error:',err)}
+
+  document.getElementById('btnStatus').style.display='inline-flex';
+  document.getElementById('statusInline').style.display='block';
   if(new URLSearchParams(location.search).get('staff')==='tochi')document.getElementById('staffPanel').classList.add('show');
 
-  // Hide floating btn when inline btn is in view
-  var floatBtn=document.getElementById('btnStatus'),inlineEl=document.getElementById('statusInline');
-  function checkFloat(){
-    if(!inlineEl||!floatBtn)return;
-    var r=inlineEl.getBoundingClientRect();
-    if(r.top<window.innerHeight+60){floatBtn.style.opacity='0';floatBtn.style.pointerEvents='none'}
-    else{floatBtn.style.opacity='1';floatBtn.style.pointerEvents='auto'}
-  }
-  window.addEventListener('scroll',checkFloat,{passive:true});
-  checkFloat();
-  window.scrollTo({top:0,behavior:'smooth'});
+  var fb=document.getElementById('btnStatus'),il=document.getElementById('statusInline');
+  function cf(){if(!il||!fb)return;var r=il.getBoundingClientRect();if(r.top<window.innerHeight+60){fb.style.opacity='0';fb.style.pointerEvents='none'}else{fb.style.opacity='1';fb.style.pointerEvents='auto'}}
+  window.addEventListener('scroll',cf,{passive:true});cf();
 }
 
 showStep(1);

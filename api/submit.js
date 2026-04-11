@@ -105,6 +105,8 @@ export default async function handler(req, res) {
       return res.status(notionRes.status).json({ error: notionData.message || 'Notion error' });
     }
 
+    const p = req.body.properties || {};
+
     // Extrair número da proposta
     const uid     = notionData.properties?.['N. Proposta']?.unique_id;
     const propNum = uid?.number ?? null;
@@ -158,7 +160,6 @@ export default async function handler(req, res) {
 
     // ── 2. Enviar e-mail via Resend ───────────────────────────────────────
     if (RESEND_KEY) {
-      const p = req.body.properties || {};
       const nome      = p['Nome']?.title?.[0]?.text?.content    || '—';
       const empresa   = p['Empresa']?.rich_text?.[0]?.text?.content || '';
       const wa        = p['WhatsApp']?.phone_number               || '—';

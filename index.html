@@ -598,6 +598,7 @@ async function sendToNotion(d,est){
 }
 
 async function doSubmit(){
+  try{
   var d=collectData();
   var est=calcEst(d);
 
@@ -648,6 +649,7 @@ async function doSubmit(){
   var fb=document.getElementById('btnStatus'),il=document.getElementById('statusInline');
   function cf(){if(!il||!fb)return;var r=il.getBoundingClientRect();if(r.top<window.innerHeight+60){fb.style.opacity='0';fb.style.pointerEvents='none'}else{fb.style.opacity='1';fb.style.pointerEvents='auto'}}
   window.addEventListener('scroll',cf,{passive:true});cf();
+  }catch(e){alert('Erro ao enviar: '+e.message);console.error('doSubmit error:',e)}
 }
 
 showStep(1);
